@@ -173,13 +173,13 @@ export default function App() {
     setFetchLoading(true); setFetchError(""); setFetchedNews([]); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて");
     try {
       const data = await callAPI(apiKey, {
-        max_tokens: 4000,
+        max_tokens: 8000,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${selectedCategory.query} の最新AIニュースを検索してください。期間：過去${dateRange}日以内の記事のみ。5件まとめて以下のJSON配列のみを返してください。説明不要。URLは実在するものを入れてください。
+          content: `${selectedCategory.query} の最新AIニュースを検索してください。期間：過去${dateRange}日以内の記事のみ。3件だけまとめて以下のJSON配列のみを返してください。説明不要。必ずJSONを最後まで完結させてください。
 
-[{"title":"タイトル","summary":"2文の要約","source":"メディア名","url":"URL","tags":["タグ1","タグ2"]}]`
+[{"title":"タイトル","summary":"1文の要約","source":"メディア名","url":"URL","tags":["タグ1"]}]`
         }]
       });
       if (data.error) throw new Error(data.error.message);
@@ -201,13 +201,13 @@ export default function App() {
     setSnsLoading(true); setSnsError(""); setSnsPosts([]); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて");
     try {
       const data = await callAPI(apiKey, {
-        max_tokens: 4000,
+        max_tokens: 8000,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${(selectedHashtags.length > 0 ? selectedHashtags : snsCategory.hashtags.slice(0,3)).join(" ")} の過去${snsDays}日以内のXでの投稿・反応・議論を検索してください。5件まとめて以下のJSON配列のみを返してください。説明不要。
+          content: `${(selectedHashtags.length > 0 ? selectedHashtags : snsCategory.hashtags.slice(0,3)).join(" ")} の過去${snsDays}日以内のXでの投稿・反応・議論を検索してください。3件だけまとめて以下のJSON配列のみを返してください。説明不要。必ずJSONを最後まで完結させてください。
 
-[{"title":"タイトル(30文字以内)","summary":"どんな反応や議論があったか1文で","source":"X/Twitter","url":"URL","tags":["使われたハッシュタグ"],"reaction":"ポジティブ"}]`
+[{"title":"タイトル(20文字以内)","summary":"1文で","source":"X/Twitter","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
         }]
       });
       if (data.error) throw new Error(data.error.message);
