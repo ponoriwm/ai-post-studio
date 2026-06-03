@@ -36,13 +36,28 @@ const PERSONAS = [
 【投稿スタイル】140文字以内、ハッシュタグ1〜2個、絵文字1つまで`
   },
   {
-    id: "conan", name: "コナン系秀才", emoji: "🔍", color: "#1e3a5f", accent: "#60a5fa", description: "構造的分析・知的好奇心",
+    id: "conan", name: "少年探偵系", emoji: "🔍", color: "#1e3a5f", accent: "#60a5fa", description: "鋭い分析・知的好奇心",
     prompt: `あなたはAI・テクノロジー分野のSNSアカウントとして投稿を行う、江戸川コナンのような秀才少年キャラクターです。
 【人格設定】
 - 鋭い観察眼と論理的思考でニュースの本質を見抜く
 - 隠れた真実や見落とされがちな視点を指摘する
 【語尾・口調】「ちょっと待って」「気づいてないかもしれないけど」「つまり…」「真相はもっと深いところにある」
 【投稿スタイル】140文字以内、ハッシュタグ1〜2個、絵文字なし`
+  },
+  {
+    id: "summary", name: "要約リポスト", emoji: "📌", color: "#374151", accent: "#9ca3af", description: "シンプル要約・情報共有",
+    prompt: `あなたはAI・テクノロジーニュースを簡潔に要約してリポストするSNSアカウントです。
+【役割】
+- 主観・感想・コメントは一切入れない
+- ニュースの核心を正確にシンプルに伝えるだけ
+【投稿の構成】
+1. ニュースのポイントを2〜3行で箇条書きまたは短文でまとめる
+2. 最後にハッシュタグを1〜2個つける
+【投稿スタイル】
+- 140文字以内
+- 事実のみ、意見・感想なし
+- 「〜が発表」「〜が明らかに」「〜を発表」などの客観的な表現を使う
+- 絵文字は使わない`
   }
 ];
 
@@ -129,7 +144,7 @@ export default function App() {
   const [fetchedNews, setFetchedNews] = useState([]);
   const [fetchLoading, setFetchLoading] = useState(false);
   const [fetchError, setFetchError] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(NEWS_CATEGORIES[0]);
+  const [selectedCategories, setSelectedCategories] = useState([NEWS_CATEGORIES[0]]);
   const [activeFilter, setActiveFilter] = useState("すべて");
   const [dateRange, setDateRange] = useState("7");
   const [selectedNews, setSelectedNews] = useState(null);
@@ -161,6 +176,13 @@ export default function App() {
   const [editedText, setEditedText] = useState("");
   const [approved, setApproved] = useState(false);
   const [queue, setQueue] = useState([]);
+  const [copiedId, setCopiedId] = useState(null);
+
+  function copyWithFeedback(id, text) {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
 
   const currentPersona = PERSONAS.find(p => p.id === selectedPersonaId);
   const activePrompt = customPersona !== null ? customPersona : currentPersona.prompt;
@@ -170,14 +192,14 @@ export default function App() {
 
   async function fetchNews() {
     if (!apiKey) { setFetchError("APIキーを設定してください"); return; }
-    setFetchLoading(true); setFetchError(""); setFetchedNews([]); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて");
+    setFetchLoading(true); setFetchError(""); setFetchedNews([]); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて"); setApproved(false);
     try {
       const data = await callAPI(apiKey, {
         max_tokens: 8000,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${selectedCategory.query} の最新AIニュースを検索してください。期間：過去${dateRange}日以内の記事のみ。3件だけまとめて以下のJSON配列のみを返してください。説明不要。必ずJSONを最後まで完結させてください。
+          content: `${selectedCategories.map(c => c.query).join(" OR ")} の最新AIニュースを検索してください。期間：過去${dateRange}日以内の記事のみ。3件だけまとめて以下のJSON配列のみを返してください。説明不要。必ずJSONを最後まで完結させてください。
 
 [{"title":"タイトル","summary":"1文の要約","source":"メディア名","url":"URL","tags":["タグ1"]}]`
         }]
@@ -250,8 +272,14 @@ export default function App() {
         const title = activeTab === "search" ? selectedNews?.title
           : activeTab === "sns" ? selectedPost?.title
           : customNews.slice(0, 30) + "…";
+        const url = activeTab === "search" ? selectedNews?.url
+          : activeTab === "sns" ? selectedPost?.url
+          : null;
+        const source = activeTab === "search" ? selectedNews?.source
+          : activeTab === "sns" ? selectedPost?.source
+          : null;
         const p = PERSONAS.find(p => p.id === selectedPersonaId);
-        setQueue(q => [...q, { id: Date.now(), text, newsTitle: title, persona: p.name, personaEmoji: p.emoji }]);
+        setQueue(q => [...q, { id: Date.now(), text, newsTitle: title, url, source, persona: p.name, personaEmoji: p.emoji }]);
         setApproved(true);
       }
     } catch (e) { setGenerated("エラー: " + e.message); }
@@ -260,14 +288,33 @@ export default function App() {
 
   function approvePost() {
     const text = editMode ? editedText : generated;
-    const title = activeTab === "search" ? selectedNews?.title : customNews.slice(0, 30) + "…";
-    setQueue(q => [...q, { id: Date.now(), text, newsTitle: title, persona: currentPersona.name, personaEmoji: currentPersona.emoji }]);
+    const title = activeTab === "search" ? selectedNews?.title
+      : activeTab === "sns" ? selectedPost?.title
+      : customNews.slice(0, 30) + "…";
+    const url = activeTab === "search" ? selectedNews?.url
+      : activeTab === "sns" ? selectedPost?.url
+      : null;
+    const source = activeTab === "search" ? selectedNews?.source
+      : activeTab === "sns" ? selectedPost?.source
+      : null;
+    setQueue(q => [...q, { id: Date.now(), text, newsTitle: title, url, source, persona: currentPersona.name, personaEmoji: currentPersona.emoji }]);
     setApproved(true); setEditMode(false);
   }
 
   const filteredNews = activeFilter === "すべて"
     ? fetchedNews
     : fetchedNews.filter(n => (n.title + n.summary + (n.tags || []).join(" ")).includes(activeFilter));
+
+  function toggleCategory(cat) {
+    setSelectedCategories(prev => {
+      const exists = prev.find(c => c.id === cat.id);
+      if (exists) {
+        return prev.length === 1 ? prev : prev.filter(c => c.id !== cat.id);
+      }
+      return [...prev, cat];
+    });
+    setFetchedNews([]); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて");
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#08080f", color: "#e2e2f0", fontFamily: "'DM Sans','Noto Sans JP',sans-serif" }}>
@@ -379,7 +426,7 @@ export default function App() {
           {/* Persona Selector */}
           <div style={{ marginBottom: 22 }}>
             <p className="label">人格を選択</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 8 }}>
               {PERSONAS.map(p => (
                 <div key={p.id} className={`persona-card ${selectedPersonaId === p.id ? "active" : ""}`}
                   style={{ "--accent": p.accent }}
@@ -432,19 +479,39 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <p className="label">カテゴリを選択</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
-                {NEWS_CATEGORIES.map(c => (
-                  <button key={c.id} className={`source-btn ${selectedCategory.id === c.id ? "active" : ""}`}
-                    style={{ flex: "1 1 calc(50% - 4px)", textAlign: "left" }}
-                    onClick={() => { setSelectedCategory(c); setFetchedNews([]); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて"); }}>
-                    {c.emoji} {c.name}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
+                <p className="label" style={{ margin: 0 }}>カテゴリを選択（複数可）</p>
+                {selectedCategories.length > 1 && (
+                  <button onClick={() => { setSelectedCategories([NEWS_CATEGORIES[0]]); setFetchedNews([]); setSelectedNews(null); }}
+                    style={{ background: "none", border: "1px solid #2a2a4a", color: "#5a5a8a", borderRadius: 4, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>
+                    リセット
                   </button>
-                ))}
+                )}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
+                {NEWS_CATEGORIES.map(c => {
+                  const isSelected = selectedCategories.find(s => s.id === c.id);
+                  return (
+                    <button key={c.id}
+                      style={{
+                        flex: "1 1 calc(50% - 4px)", textAlign: "left",
+                        background: isSelected ? "#0f1825" : "#11111a",
+                        border: `1px solid ${isSelected ? "#3a5a8a" : "#1c1c2e"}`,
+                        color: isSelected ? "#7eb8f7" : "#666",
+                        borderRadius: 8, padding: "8px 12px", fontSize: 12,
+                        fontFamily: "inherit", cursor: "pointer", transition: "all .2s",
+                        position: "relative"
+                      }}
+                      onClick={() => toggleCategory(c)}>
+                      {isSelected && <span style={{ position: "absolute", top: 4, right: 6, fontSize: 9, color: "#7eb8f7" }}>✓</span>}
+                      {c.emoji} {c.name}
+                    </button>
+                  );
+                })}
               </div>
 
               <button className="btn-fetch" disabled={fetchLoading || !apiKey} onClick={fetchNews} style={{ marginBottom: 16 }}>
-                {fetchLoading ? <><span className="loading-spin" />検索中（20〜30秒）...</> : `🔍 「${selectedCategory.name}」の最新ニュースを検索`}
+                {fetchLoading ? <><span className="loading-spin" />検索中（20〜30秒）...</> : `🔍 ${selectedCategories.length === 1 ? `「${selectedCategories[0].name}」` : `${selectedCategories.length}カテゴリ`}の最新ニュースを検索`}
               </button>
 
               {!apiKey && <p style={{ fontSize: 12, color: "#6a5a00", background: "#1a1400", border: "1px solid #3a3000", borderRadius: 8, padding: "10px 14px", marginBottom: 12 }}>⚠ APIキーを設定すると検索が使えます</p>}
@@ -452,11 +519,11 @@ export default function App() {
 
               {fetchedNews.length > 0 && (
                 <div className="slide-in">
-                  {selectedCategory.filters?.length > 0 && (
+                  {selectedCategories.length === 1 && selectedCategories[0].filters?.length > 0 && (
                     <div style={{ marginBottom: 14 }}>
                       <p className="label">絞り込み</p>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {["すべて", ...selectedCategory.filters].map(f => (
+                        {["すべて", ...selectedCategories[0].filters].map(f => (
                           <button key={f} className={`filter-tag ${activeFilter === f ? "active" : ""}`}
                             onClick={() => { setActiveFilter(f); setSelectedNews(null); setGenerated(null); }}>
                             {f}
@@ -681,16 +748,30 @@ export default function App() {
                     <button style={{ background: "none", border: "none", color: "#3a3a5a", cursor: "pointer", fontSize: 14 }}
                       onClick={() => setQueue(q => q.filter((_, idx) => idx !== i))}>×</button>
                   </div>
-                  <p style={{ fontSize: 12.5, lineHeight: 1.7, marginBottom: 10, color: "#ccc" }}>{item.text}</p>
-                  <button onClick={() => navigator.clipboard.writeText(item.text)}
-                    style={{ background: "#0f1825", border: "1px solid #1a3a5a", color: "#7eb8f7", borderRadius: 6, padding: "5px 12px", fontSize: 11, cursor: "pointer", width: "100%" }}>
-                    📋 コピー
-                  </button>
+                  <p style={{ fontSize: 12.5, lineHeight: 1.7, marginBottom: 8, color: "#ccc" }}>{item.text}</p>
+                  {item.url && item.url !== "https://example.com" && (
+                    <a href={item.url} target="_blank" rel="noreferrer"
+                      style={{ display: "block", fontSize: 11, color: "#3a5a8a", marginBottom: 10, wordBreak: "break-all", lineHeight: 1.5 }}>
+                      🔗 {item.source ? item.source : item.url}
+                    </a>
+                  )}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => copyWithFeedback(`${item.id}_text`, item.text)}
+                      style={{ background: copiedId === `${item.id}_text` ? "#064e3b" : "#0f1825", border: `1px solid ${copiedId === \`${item.id}_text\` ? "#1a4a3a" : "#1a3a5a"}`, color: copiedId === `${item.id}_text` ? "#34d399" : "#7eb8f7", borderRadius: 6, padding: "5px 12px", fontSize: 11, cursor: "pointer", flex: 1, transition: "all 0.3s" }}>
+                      {copiedId === `${item.id}_text` ? "✓ コピーしました！" : "📋 投稿をコピー"}
+                    </button>
+                    {item.url && item.url !== "https://example.com" && (
+                      <button onClick={() => copyWithFeedback(`${item.id}_url`, item.text + "\n" + item.url)}
+                        style={{ background: copiedId === `${item.id}_url` ? "#064e3b" : "#0f1825", border: `1px solid ${copiedId === \`${item.id}_url\` ? "#1a4a3a" : "#1a3a5a"}`, color: copiedId === `${item.id}_url` ? "#34d399" : "#7eb8f7", borderRadius: 6, padding: "5px 12px", fontSize: 11, cursor: "pointer", flex: 1, transition: "all 0.3s" }}>
+                        {copiedId === `${item.id}_url` ? "✓ コピーしました！" : "📋 投稿＋URL"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
-              <button className="btn-ghost" style={{ fontSize: 11 }}
-                onClick={() => navigator.clipboard.writeText(queue.map((q, i) => `【${i + 1}】${q.text}`).join("\n\n"))}>
-                📋 全件まとめてコピー
+              <button className="btn-ghost" style={{ fontSize: 11, transition: "all 0.3s", color: copiedId === "all" ? "#34d399" : undefined, borderColor: copiedId === "all" ? "#1a4a3a" : undefined }}
+                onClick={() => copyWithFeedback("all", queue.map((q, i) => `【${i + 1}】${q.text}${q.url ? "\n" + q.url : ""}`).join("\n\n"))}>
+                {copiedId === "all" ? "✓ コピーしました！" : "📋 全件まとめてコピー"}
               </button>
             </div>
           </div>
