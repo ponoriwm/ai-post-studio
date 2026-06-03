@@ -55,6 +55,15 @@ const NEWS_CATEGORIES = [
   { id: "ip", name: "AI×IP・著作権", emoji: "⚡", query: "AI 著作権 IP キャラクター 知的財産 訴訟", filters: ["著作権", "訴訟", "キャラクター", "音楽著作権", "規制"] },
 ];
 
+const SNS_CATEGORIES = [
+  { id: "tools", name: "AIツール・新モデル", emoji: "🤖", query: "ChatGPT Claude Gemini AIツール 新機能 X Twitter 話題", filters: [] },
+  { id: "policy", name: "AI規制・政策", emoji: "⚖️", query: "AI規制 AI法律 政策 議論 X Twitter", filters: [] },
+  { id: "global", name: "海外トレンド", emoji: "🌐", query: "AI trending OpenAI Anthropic Google viral Twitter X", filters: [] },
+  { id: "japan", name: "国内トレンド", emoji: "🇯🇵", query: "AI人工知能 日本 トレンド バズ Twitter X", filters: [] },
+  { id: "entame", name: "AI×エンタメ", emoji: "🎬", query: "AI 映画 音楽 ゲーム アニメ バズ 話題 Twitter X", filters: ["映画", "ゲーム", "音楽", "アニメ"] },
+  { id: "ip", name: "AI×IP・著作権", emoji: "⚡", query: "AI 著作権 IP 訴訟 議論 Twitter X", filters: ["著作権", "訴訟", "キャラクター"] },
+];
+
 const API_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-5";
 
@@ -121,6 +130,15 @@ export default function App() {
   const [customNews, setCustomNews] = useState("");
   const [activeTab, setActiveTab] = useState("search");
 
+  // SNSポスト検索
+  const [snsCategory, setSnsCategory] = useState(SNS_CATEGORIES[0]);
+  const [snsPosts, setSnsPosts] = useState([]);
+  const [snsLoading, setSnsLoading] = useState(false);
+  const [snsError, setSnsError] = useState("");
+  const [snsFilter, setSnsFilter] = useState("すべて");
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [snsDays, setSnsDays] = useState("7");
+
   // 生成
   const [generated, setGenerated] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -161,6 +179,31 @@ export default function App() {
       setFetchedNews(items);
     } catch (e) { setFetchError("取得に失敗しました: " + e.message); }
     finally { setFetchLoading(false); }
+  }
+
+  async function fetchSnsPosts() {
+    if (!apiKey) { setSnsError("APIキーを設定してください"); return; }
+    setSnsLoading(true); setSnsError(""); setSnsPosts([]); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて");
+    try {
+      const data = await callAPI(apiKey, {
+        max_tokens: 4000,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        messages: [{
+          role: "user",
+          content: `${snsCategory.query} で過去${snsDays}日以内に話題になった投稿・議論を検索してください。5件まとめて以下のJSON配列のみを返してください。説明不要。
+
+[{"title":"話題のタイトル","summary":"どんな議論や反応があったか2文で","source":"情報源","url":"URL","tags":["タグ1","タグ2"],"reaction":"ポジティブ/ネガティブ/議論中"}]`
+        }]
+      });
+      if (data.error) throw new Error(data.error.message);
+      const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+      const m = allText.match(/\`\`\`(?:json)?\s*([\s\S]*?)\`\`\`/);
+      let items;
+      if (m) { items = JSON.parse(m[1].trim()); }
+      else { const s = allText.indexOf("["), e = allText.lastIndexOf("]"); items = JSON.parse(allText.slice(s, e + 1)); }
+      setSnsPosts(items);
+    } catch (e) { setSnsError("取得に失敗しました: " + e.message); }
+    finally { setSnsLoading(false); }
   }
 
   async function generateComment() {
@@ -334,6 +377,7 @@ export default function App() {
           {/* Tabs */}
           <div style={{ borderBottom: "1px solid #141420", marginBottom: 18, display: "flex" }}>
             <button className={`tab-btn ${activeTab === "search" ? "tab-active" : "tab-inactive"}`} onClick={() => setActiveTab("search")}>🔍 ニュース検索</button>
+            <button className={`tab-btn ${activeTab === "sns" ? "tab-active" : "tab-inactive"}`} onClick={() => setActiveTab("sns")}>𝕏 SNSトレンド</button>
             <button className={`tab-btn ${activeTab === "custom" ? "tab-active" : "tab-inactive"}`} onClick={() => setActiveTab("custom")}>✏️ 自由入力</button>
           </div>
 
@@ -502,6 +546,95 @@ export default function App() {
                               {post.tags?.map(tag => (
                                 <span key={tag} style={{ fontSize: 10, color: "#4a6a4a", background: "#0a140a", border: "1px solid #1a3a1a", borderRadius: 10, padding: "1px 8px" }}>{tag}</span>
                               ))}
+                            </div>
+                          </div>
+                          {post.url && post.url !== "https://example.com" && (
+                            <a href={post.url} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 10, color: "#3a5a8a", textDecoration: "none", whiteSpace: "nowrap", alignSelf: "flex-start" }}
+                              onClick={e => e.stopPropagation()}>🔗</a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {snsPosts.length === 0 && !snsLoading && !snsError && (
+                <div style={{ textAlign: "center", padding: "28px 0", color: "#2a2a4a", fontSize: 13 }}>
+                  カテゴリを選んで検索ボタンを押してください
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SNS Tab */}
+          {activeTab === "sns" && (
+            <div className="fade-in">
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <p className="label" style={{ margin: 0, whiteSpace: "nowrap" }}>期間</p>
+                {[
+                  { label: "24時間", value: "1" },
+                  { label: "3日", value: "3" },
+                  { label: "1週間", value: "7" },
+                  { label: "2週間", value: "14" },
+                  { label: "1ヶ月", value: "30" },
+                ].map(d => (
+                  <button key={d.value} className={`filter-tag ${snsDays === d.value ? "active" : ""}`}
+                    onClick={() => { setSnsDays(d.value); setSnsPosts([]); setSelectedPost(null); }}>
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+              <p className="label">カテゴリを選択</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
+                {SNS_CATEGORIES.map(c => (
+                  <button key={c.id} className={`source-btn ${snsCategory.id === c.id ? "active" : ""}`}
+                    style={{ flex: "1 1 calc(50% - 4px)", textAlign: "left" }}
+                    onClick={() => { setSnsCategory(c); setSnsPosts([]); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて"); }}>
+                    {c.emoji} {c.name}
+                  </button>
+                ))}
+              </div>
+              <button className="btn-fetch" disabled={snsLoading || !apiKey} onClick={fetchSnsPosts} style={{ marginBottom: 16 }}>
+                {snsLoading ? <><span className="loading-spin" />検索中...</> : `𝕏 「${snsCategory.name}」のトレンドを検索`}
+              </button>
+              {snsError && <p style={{ fontSize: 12, color: "#f87171", background: "#1a0a0a", padding: "10px 14px", borderRadius: 8, marginBottom: 12 }}>⚠ {snsError}</p>}
+              {snsPosts.length > 0 && (
+                <div className="slide-in">
+                  {snsCategory.filters?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <p className="label">絞り込み</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {["すべて", ...snsCategory.filters].map(f => (
+                          <button key={f} className={`filter-tag ${snsFilter === f ? "active" : ""}`}
+                            onClick={() => { setSnsFilter(f); setSelectedPost(null); }}>{f}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="label">{(snsFilter === "すべて" ? snsPosts : snsPosts.filter(p => (p.title + p.summary + (p.tags||[]).join(" ")).includes(snsFilter))).length}件表示</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                    {(snsFilter === "すべて" ? snsPosts : snsPosts.filter(p => (p.title + p.summary + (p.tags||[]).join(" ")).includes(snsFilter))).map((post, i) => (
+                      <div key={i} className={`news-card ${selectedPost === post ? "selected" : ""}`}
+                        onClick={() => { setSelectedPost(post); setGenerated(null); setApproved(false); }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                              <p style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: selectedPost === post ? "#c8d8f0" : "#bbb" }}>{post.title}</p>
+                              {post.reaction && (
+                                <span style={{
+                                  fontSize: 10, borderRadius: 10, padding: "1px 8px", whiteSpace: "nowrap",
+                                  background: post.reaction === "ポジティブ" ? "#0a1a0a" : post.reaction === "ネガティブ" ? "#1a0a0a" : "#1a1400",
+                                  color: post.reaction === "ポジティブ" ? "#4a9a4a" : post.reaction === "ネガティブ" ? "#9a4a4a" : "#9a8a00",
+                                  border: `1px solid ${post.reaction === "ポジティブ" ? "#1a3a1a" : post.reaction === "ネガティブ" ? "#3a1a1a" : "#3a3000"}`
+                                }}>{post.reaction}</span>
+                              )}
+                            </div>
+                            {post.summary && <p style={{ fontSize: 11.5, color: "#445", lineHeight: 1.6 }}>{post.summary}</p>}
+                            <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                              {post.source && <span style={{ fontSize: 10, color: "#3a5a8a" }}>📰 {post.source}</span>}
+                              {post.tags?.map(tag => <span key={tag} style={{ fontSize: 10, color: "#4a6a4a", background: "#0a140a", border: "1px solid #1a3a1a", borderRadius: 10, padding: "1px 8px" }}>{tag}</span>)}
                             </div>
                           </div>
                           {post.url && post.url !== "https://example.com" && (
