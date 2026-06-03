@@ -56,12 +56,12 @@ const NEWS_CATEGORIES = [
 ];
 
 const SNS_CATEGORIES = [
-  { id: "tools", name: "AIツール・新モデル", emoji: "🤖", query: "ChatGPT Claude Gemini AIツール 新機能 X Twitter 話題", filters: [] },
-  { id: "policy", name: "AI規制・政策", emoji: "⚖️", query: "AI規制 AI法律 政策 議論 X Twitter", filters: [] },
-  { id: "global", name: "海外トレンド", emoji: "🌐", query: "AI trending OpenAI Anthropic Google viral Twitter X", filters: [] },
-  { id: "japan", name: "国内トレンド", emoji: "🇯🇵", query: "AI人工知能 日本 トレンド バズ Twitter X", filters: [] },
-  { id: "entame", name: "AI×エンタメ", emoji: "🎬", query: "AI 映画 音楽 ゲーム アニメ バズ 話題 Twitter X", filters: ["映画", "ゲーム", "音楽", "アニメ"] },
-  { id: "ip", name: "AI×IP・著作権", emoji: "⚡", query: "AI 著作権 IP 訴訟 議論 Twitter X", filters: ["著作権", "訴訟", "キャラクター"] },
+  { id: "tools", name: "AIツール・新モデル", emoji: "🤖", query: "ChatGPT Claude Gemini AIツール 新機能 話題 反応", filters: [] },
+  { id: "policy", name: "AI規制・政策", emoji: "⚖️", query: "AI規制 AI法律 政策 議論 反応 賛否", filters: [] },
+  { id: "global", name: "海外トレンド", emoji: "🌐", query: "AI trending OpenAI Anthropic Google viral discussion", filters: [] },
+  { id: "japan", name: "国内トレンド", emoji: "🇯🇵", query: "AI人工知能 日本 話題 注目 ニュース 議論", filters: [] },
+  { id: "entame", name: "AI×エンタメ", emoji: "🎬", query: "AI 映画 音楽 ゲーム アニメ 話題 注目 最新", filters: ["映画", "ゲーム", "音楽", "アニメ"] },
+  { id: "ip", name: "AI×IP・著作権", emoji: "⚡", query: "AI 著作権 IP 訴訟 判決 議論 最新", filters: ["著作権", "訴訟", "キャラクター"] },
 ];
 
 const API_URL = "https://api.anthropic.com/v1/messages";
@@ -137,7 +137,7 @@ export default function App() {
   const [snsError, setSnsError] = useState("");
   const [snsFilter, setSnsFilter] = useState("すべて");
   const [selectedPost, setSelectedPost] = useState(null);
-  const [snsDays, setSnsDays] = useState("7");
+  const [snsDays, setSnsDays] = useState("30");
 
   // 生成
   const [generated, setGenerated] = useState(null);
@@ -190,9 +190,9 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${snsCategory.query} で過去${snsDays}日以内に話題になった投稿・議論を検索してください。必ず5件、以下のJSON配列のみを返してください。説明不要。途中で切れないよう短めに書いてください。
+          content: `${snsCategory.query} に関して過去${snsDays}日以内に話題になったニュース・議論・トレンドを検索してください。SNSの反応や議論も含めて構いません。5件まとめて以下のJSON配列のみを返してください。説明不要。
 
-[{"title":"話題タイトル(30文字以内)","summary":"1文の要約","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
+[{"title":"タイトル(30文字以内)","summary":"1文の要約","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
         }]
       });
       if (data.error) throw new Error(data.error.message);
