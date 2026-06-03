@@ -139,13 +139,13 @@ export default function App() {
     setFetchLoading(true); setFetchError(""); setFetchedNews([]); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて");
     try {
       const data = await callAPI(apiKey, {
-        max_tokens: 2000,
+        max_tokens: 4000,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${selectedCategory.query} の最新AIニュースを検索して10件まとめてください。以下のJSON配列のみを返してください。説明不要。
+          content: `${selectedCategory.query} の最新AIニュースを検索して5件まとめてください。以下のJSON配列のみを返してください。説明不要。URLは実在するものを入れてください。
 
-[{"title":"タイトル","summary":"2〜3文の要約","source":"メディア名","url":"URL","tags":["タグ1","タグ2"]}]`
+[{"title":"タイトル","summary":"2文の要約","source":"メディア名","url":"URL","tags":["タグ1","タグ2"]}]`
         }]
       });
       if (data.error) throw new Error(data.error.message);
