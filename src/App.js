@@ -86,9 +86,11 @@ const SNS_CATEGORIES = [
 ];
 
 const API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-5";
+const MODEL_SEARCH = "claude-haiku-4-5";   // ニュース検索用（安い）
+const MODEL_GEN    = "claude-sonnet-4-5";  // コメント生成用（高品質）
+const CACHE_TTL    = 3 * 60 * 60 * 1000;  // キャッシュ有効期間：3時間
 
-function callAPI(apiKey, body) {
+function callAPI(apiKey, body, model) {
   return fetch(API_URL, {
     method: "POST",
     headers: {
@@ -97,8 +99,26 @@ function callAPI(apiKey, body) {
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true",
     },
-    body: JSON.stringify({ model: MODEL, ...body }),
+    body: JSON.stringify({ model: model, ...body }),
   }).then(r => r.json());
+}
+
+function getCacheKey(type, id, days) {
+  return `ai_post_studio_cache_${type}_${id}_${days}`;
+}
+
+function getCache(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) { localStorage.removeItem(key); return null; }
+    return data;
+  } catch { return null; }
+}
+
+function setCache(key, data) {
+  try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch {}
 }
 
 function TypewriterText({ text, speed = 15 }) {
@@ -192,6 +212,16 @@ export default function App() {
 
   async function fetchNews() {
     if (!apiKey) { setFetchError("APIキーを設定してください"); return; }
+
+    // キャッシュチェック
+    const cacheKey = getCacheKey("news", selectedCategories.map(c => c.id).join("-"), dateRange);
+    const cached = getCache(cacheKey);
+    if (cached) {
+      setFetchedNews(cached);
+      setFetchError(""); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて"); setApproved(false);
+      return;
+    }
+
     setFetchLoading(true); setFetchError(""); setFetchedNews([]); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて"); setApproved(false);
     try {
       const data = await callAPI(apiKey, {
@@ -203,7 +233,7 @@ export default function App() {
 
 [{"title":"タイトル","summary":"1文の要約","source":"メディア名","url":"URL","tags":["タグ1"]}]`
         }]
-      });
+      }, MODEL_SEARCH);
       if (data.error) throw new Error(data.error.message);
       const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
       const m = allText.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -213,6 +243,7 @@ export default function App() {
         const s = allText.indexOf("["), e = allText.lastIndexOf("]");
         items = JSON.parse(allText.slice(s, e + 1));
       }
+      setCache(cacheKey, items);
       setFetchedNews(items);
     } catch (e) { setFetchError("取得に失敗しました: " + e.message); }
     finally { setFetchLoading(false); }
@@ -220,6 +251,16 @@ export default function App() {
 
   async function fetchSnsPosts() {
     if (!apiKey) { setSnsError("APIキーを設定してください"); return; }
+
+    // キャッシュチェック
+    const snsCacheKey = getCacheKey("sns", snsCategory.id + (selectedHashtags.join("")), snsDays);
+    const snsCached = getCache(snsCacheKey);
+    if (snsCached) {
+      setSnsPosts(snsCached);
+      setSnsError(""); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて");
+      return;
+    }
+
     setSnsLoading(true); setSnsError(""); setSnsPosts([]); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて");
     try {
       const data = await callAPI(apiKey, {
@@ -245,6 +286,7 @@ export default function App() {
         if (s !== -1 && e !== -1) items = JSON.parse(allText.slice(s, e + 1));
       }
       if (!items || !items.length) throw new Error("取得失敗。レスポンス: " + allText.slice(0, 200));
+      setCache(snsCacheKey, items);
       setSnsPosts(items);
     } catch (e) { setSnsError("取得に失敗しました: " + e.message); }
     finally { setSnsLoading(false); }
@@ -262,7 +304,7 @@ export default function App() {
         max_tokens: 1000,
         system: activePrompt,
         messages: [{ role: "user", content: `以下のAIニュースについてXに投稿するコメントを1つ生成してください。140文字以内、ハッシュタグ1〜2個まで。投稿文だけ返してください。\n\n${newsText}` }]
-      });
+      }, MODEL_GEN);
       if (data.error) throw new Error(data.error.message);
       const text = data.content?.[0]?.text || "生成失敗";
       setGenerated(text);
@@ -510,6 +552,11 @@ export default function App() {
                 })}
               </div>
 
+              {getCache(getCacheKey("news", selectedCategories.map(c => c.id).join("-"), dateRange)) && (
+                <p style={{ fontSize: 10, color: "#3a5a3a", marginBottom: 8 }}>
+                  ✓ キャッシュ済み（3時間有効）<button onClick={() => { localStorage.removeItem(getCacheKey("news", selectedCategories.map(c => c.id).join("-"), dateRange)); setFetchedNews([]); }} style={{ background: "none", border: "none", color: "#5a3a3a", cursor: "pointer", fontSize: 10, marginLeft: 6, fontFamily: "inherit" }}>再取得</button>
+                </p>
+              )}
               <button className="btn-fetch" disabled={fetchLoading || !apiKey} onClick={fetchNews} style={{ marginBottom: 16 }}>
                 {fetchLoading ? <><span className="loading-spin" />検索中（20〜30秒）...</> : `🔍 ${selectedCategories.length === 1 ? `「${selectedCategories[0].name}」` : `${selectedCategories.length}カテゴリ`}の最新ニュースを検索`}
               </button>
