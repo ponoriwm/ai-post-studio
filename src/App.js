@@ -116,6 +116,7 @@ export default function App() {
   const [fetchError, setFetchError] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(NEWS_CATEGORIES[0]);
   const [activeFilter, setActiveFilter] = useState("すべて");
+  const [dateRange, setDateRange] = useState("7");
   const [selectedNews, setSelectedNews] = useState(null);
   const [customNews, setCustomNews] = useState("");
   const [activeTab, setActiveTab] = useState("search");
@@ -143,7 +144,7 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${selectedCategory.query} の最新AIニュースを検索して5件まとめてください。以下のJSON配列のみを返してください。説明不要。URLは実在するものを入れてください。
+          content: `${selectedCategory.query} の最新AIニュースを検索してください。期間：過去${dateRange}日以内の記事のみ。5件まとめて以下のJSON配列のみを返してください。説明不要。URLは実在するものを入れてください。
 
 [{"title":"タイトル","summary":"2文の要約","source":"メディア名","url":"URL","tags":["タグ1","タグ2"]}]`
         }]
@@ -337,6 +338,22 @@ export default function App() {
           {/* Search Tab */}
           {activeTab === "search" && (
             <div className="fade-in">
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <p className="label" style={{ margin: 0, whiteSpace: "nowrap" }}>期間</p>
+                {[
+                  { label: "24時間", value: "1" },
+                  { label: "3日", value: "3" },
+                  { label: "1週間", value: "7" },
+                  { label: "2週間", value: "14" },
+                  { label: "1ヶ月", value: "30" },
+                ].map(d => (
+                  <button key={d.value}
+                    className={`filter-tag ${dateRange === d.value ? "active" : ""}`}
+                    onClick={() => { setDateRange(d.value); setFetchedNews([]); setSelectedNews(null); setGenerated(null); }}>
+                    {d.label}
+                  </button>
+                ))}
+              </div>
               <p className="label">カテゴリを選択</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
                 {NEWS_CATEGORIES.map(c => (
