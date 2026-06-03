@@ -146,6 +146,14 @@ export default function App() {
   const [selectedPost, setSelectedPost] = useState(null);
   const [snsDays, setSnsDays] = useState("30");
 
+  // 自動承認モード（localStorageに保存）
+  const [autoApprove, setAutoApprove] = useState(() => localStorage.getItem("ai_auto_approve") === "true");
+  function toggleAutoApprove() {
+    const next = !autoApprove;
+    setAutoApprove(next);
+    localStorage.setItem("ai_auto_approve", String(next));
+  }
+
   // 生成
   const [generated, setGenerated] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -234,8 +242,18 @@ export default function App() {
         messages: [{ role: "user", content: `以下のAIニュースについてXに投稿するコメントを1つ生成してください。140文字以内、ハッシュタグ1〜2個まで。投稿文だけ返してください。\n\n${newsText}` }]
       });
       if (data.error) throw new Error(data.error.message);
-      setGenerated(data.content?.[0]?.text || "生成失敗");
-      setEditedText(data.content?.[0]?.text || "");
+      const text = data.content?.[0]?.text || "生成失敗";
+      setGenerated(text);
+      setEditedText(text);
+      // 自動承認モードの場合はそのままキューに追加
+      if (autoApprove && text !== "生成失敗") {
+        const title = activeTab === "search" ? selectedNews?.title
+          : activeTab === "sns" ? selectedPost?.title
+          : customNews.slice(0, 30) + "…";
+        const p = PERSONAS.find(p => p.id === selectedPersonaId);
+        setQueue(q => [...q, { id: Date.now(), text, newsTitle: title, persona: p.name, personaEmoji: p.emoji }]);
+        setApproved(true);
+      }
     } catch (e) { setGenerated("エラー: " + e.message); }
     finally { setLoading(false); }
   }
@@ -680,11 +698,34 @@ export default function App() {
       </div>
 
       {/* Footer */}
-      <div style={{ borderTop: "1px solid #141420", padding: "12px 20px", maxWidth: 820, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ borderTop: "1px solid #141420", padding: "14px 20px", maxWidth: 820, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <p style={{ fontSize: 11, color: "#2a2a4a" }}>AI Post Studio v1.0</p>
-        <div style={{ display: "flex", gap: 6 }}>
-          <span style={{ fontSize: 10, color: "#1d4a2a", background: "#091509", border: "1px solid #153015", borderRadius: 4, padding: "3px 10px" }}>承認モード ON</span>
-          <span style={{ fontSize: 10, color: "#2a2a3a", background: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: 4, padding: "3px 10px" }}>自動投稿 OFF</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 11, color: "#3a3a5a" }}>自動承認モード</span>
+          <div
+            onClick={toggleAutoApprove}
+            style={{
+              width: 44, height: 24, borderRadius: 12, cursor: "pointer",
+              background: autoApprove ? "#1d4ed8" : "#1a1a2a",
+              border: `1px solid ${autoApprove ? "#3a6aee" : "#2a2a4a"}`,
+              position: "relative", transition: "all 0.3s", flexShrink: 0
+            }}>
+            <div style={{
+              width: 18, height: 18, borderRadius: "50%",
+              background: autoApprove ? "#fff" : "#555",
+              position: "absolute", top: 2,
+              left: autoApprove ? 22 : 2,
+              transition: "all 0.3s"
+            }} />
+          </div>
+          <span style={{
+            fontSize: 10, borderRadius: 4, padding: "3px 10px",
+            color: autoApprove ? "#7eb8f7" : "#3a3a5a",
+            background: autoApprove ? "#0d1825" : "#0d0d0d",
+            border: `1px solid ${autoApprove ? "#1a3a5a" : "#1a1a1a"}`
+          }}>
+            {autoApprove ? "自動承認 ON" : "承認モード ON"}
+          </span>
         </div>
       </div>
     </div>
