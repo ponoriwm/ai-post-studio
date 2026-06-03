@@ -197,19 +197,17 @@ export default function App() {
       });
       if (data.error) throw new Error(data.error.message);
       const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
-      if (!allText) throw new Error("レスポンスが空です");
+      if (!allText) throw new Error("textブロックなし: " + JSON.stringify(data.content?.map(b=>b.type)));
       let items = null;
-      // ```json...``` 形式
       const m = allText.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (m) {
         items = JSON.parse(m[1].trim());
       } else {
-        // [ ... ] 形式
         const s = allText.indexOf("[");
         const e = allText.lastIndexOf("]");
         if (s !== -1 && e !== -1) items = JSON.parse(allText.slice(s, e + 1));
       }
-      if (!items || !items.length) throw new Error("記事が取得できませんでした");
+      if (!items || !items.length) throw new Error("取得失敗。レスポンス: " + allText.slice(0, 200));
       setSnsPosts(items);
     } catch (e) { setSnsError("取得に失敗しました: " + e.message); }
     finally { setSnsLoading(false); }
