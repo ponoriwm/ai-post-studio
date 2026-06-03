@@ -755,18 +755,30 @@ export default function App() {
                       🔗 {item.source ? item.source : item.url}
                     </a>
                   )}
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => copyWithFeedback(`${item.id}_text`, item.text)}
-                      style={{ background: copiedId === `${item.id}_text` ? "#064e3b" : "#0f1825", border: `1px solid ${copiedId === \`${item.id}_text\` ? "#1a4a3a" : "#1a3a5a"}`, color: copiedId === `${item.id}_text` ? "#34d399" : "#7eb8f7", borderRadius: 6, padding: "5px 12px", fontSize: 11, cursor: "pointer", flex: 1, transition: "all 0.3s" }}>
-                      {copiedId === `${item.id}_text` ? "✓ コピーしました！" : "📋 投稿をコピー"}
-                    </button>
-                    {item.url && item.url !== "https://example.com" && (
-                      <button onClick={() => copyWithFeedback(`${item.id}_url`, item.text + "\n" + item.url)}
-                        style={{ background: copiedId === `${item.id}_url` ? "#064e3b" : "#0f1825", border: `1px solid ${copiedId === \`${item.id}_url\` ? "#1a4a3a" : "#1a3a5a"}`, color: copiedId === `${item.id}_url` ? "#34d399" : "#7eb8f7", borderRadius: 6, padding: "5px 12px", fontSize: 11, cursor: "pointer", flex: 1, transition: "all 0.3s" }}>
-                        {copiedId === `${item.id}_url` ? "✓ コピーしました！" : "📋 投稿＋URL"}
-                      </button>
-                    )}
-                  </div>
+                  {(() => {
+                    const tid = item.id + "_text";
+                    const uid = item.id + "_url";
+                    const copied = (id) => copiedId === id;
+                    const btnStyle = (id) => ({
+                      background: copied(id) ? "#064e3b" : "#0f1825",
+                      border: "1px solid " + (copied(id) ? "#1a4a3a" : "#1a3a5a"),
+                      color: copied(id) ? "#34d399" : "#7eb8f7",
+                      borderRadius: 6, padding: "5px 12px", fontSize: 11,
+                      cursor: "pointer", flex: 1, transition: "all 0.3s"
+                    });
+                    return (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button onClick={() => copyWithFeedback(tid, item.text)} style={btnStyle(tid)}>
+                          {copied(tid) ? "✓ コピーしました！" : "📋 投稿をコピー"}
+                        </button>
+                        {item.url && item.url !== "https://example.com" && (
+                          <button onClick={() => copyWithFeedback(uid, item.text + "\n" + item.url)} style={btnStyle(uid)}>
+                            {copied(uid) ? "✓ コピーしました！" : "📋 投稿＋URL"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
               <button className="btn-ghost" style={{ fontSize: 11, transition: "all 0.3s", color: copiedId === "all" ? "#34d399" : undefined, borderColor: copiedId === "all" ? "#1a4a3a" : undefined }}
