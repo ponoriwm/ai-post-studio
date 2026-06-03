@@ -196,8 +196,7 @@ export default function App() {
         }]
       });
       if (data.error) throw new Error(data.error.message);
-      const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("
-");
+      const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
       if (!allText) throw new Error("レスポンスが空です");
       let items = null;
       // ```json...``` 形式
