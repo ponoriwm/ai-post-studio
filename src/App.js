@@ -56,12 +56,18 @@ const NEWS_CATEGORIES = [
 ];
 
 const SNS_CATEGORIES = [
-  { id: "tools", name: "AIツール・新モデル", emoji: "🤖", query: "ChatGPT Claude Gemini AIツール 新機能 話題 反応", filters: [] },
-  { id: "policy", name: "AI規制・政策", emoji: "⚖️", query: "AI規制 AI法律 政策 議論 反応 賛否", filters: [] },
-  { id: "global", name: "海外トレンド", emoji: "🌐", query: "AI trending OpenAI Anthropic Google viral discussion", filters: [] },
-  { id: "japan", name: "国内トレンド", emoji: "🇯🇵", query: "AI人工知能 日本 話題 注目 ニュース 議論", filters: [] },
-  { id: "entame", name: "AI×エンタメ", emoji: "🎬", query: "AI 映画 音楽 ゲーム アニメ 話題 注目 最新", filters: ["映画", "ゲーム", "音楽", "アニメ"] },
-  { id: "ip", name: "AI×IP・著作権", emoji: "⚡", query: "AI 著作権 IP 訴訟 判決 議論 最新", filters: ["著作権", "訴訟", "キャラクター"] },
+  { id: "tools", name: "AIツール・新モデル", emoji: "🤖",
+    hashtags: ["#ChatGPT", "#Claude", "#Gemini", "#生成AI", "#AIツール", "#OpenAI", "#Anthropic"] },
+  { id: "policy", name: "AI規制・政策", emoji: "⚖️",
+    hashtags: ["#AI規制", "#AIガバナンス", "#AI法", "#EUAIAct", "#AIリスク", "#AI倫理"] },
+  { id: "global", name: "海外トレンド", emoji: "🌐",
+    hashtags: ["#ArtificialIntelligence", "#MachineLearning", "#GPT", "#AINews", "#DeepLearning", "#LLM"] },
+  { id: "japan", name: "国内トレンド", emoji: "🇯🇵",
+    hashtags: ["#AI", "#人工知能", "#生成AI", "#ChatGPT日本語", "#AI活用", "#DX"] },
+  { id: "entame", name: "AI×エンタメ", emoji: "🎬",
+    hashtags: ["#AIアート", "#AI音楽", "#AIゲーム", "#AIアニメ", "#AI動画", "#Sora", "#画像生成AI"] },
+  { id: "ip", name: "AI×IP・著作権", emoji: "⚡",
+    hashtags: ["#AI著作権", "#AIと著作権", "#生成AIと著作権", "#AIイラスト問題", "#AIコンテンツ"] },
 ];
 
 const API_URL = "https://api.anthropic.com/v1/messages";
@@ -132,6 +138,7 @@ export default function App() {
 
   // SNSポスト検索
   const [snsCategory, setSnsCategory] = useState(SNS_CATEGORIES[0]);
+  const [selectedHashtags, setSelectedHashtags] = useState([]);
   const [snsPosts, setSnsPosts] = useState([]);
   const [snsLoading, setSnsLoading] = useState(false);
   const [snsError, setSnsError] = useState("");
@@ -190,9 +197,9 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${snsCategory.query} に関して過去${snsDays}日以内に話題になったニュース・議論・トレンドを検索してください。SNSの反応や議論も含めて構いません。5件まとめて以下のJSON配列のみを返してください。説明不要。
+          content: `${(selectedHashtags.length > 0 ? selectedHashtags : snsCategory.hashtags.slice(0,3)).join(" ")} の過去${snsDays}日以内のXでの投稿・反応・議論を検索してください。5件まとめて以下のJSON配列のみを返してください。説明不要。
 
-[{"title":"タイトル(30文字以内)","summary":"1文の要約","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
+[{"title":"タイトル(30文字以内)","summary":"どんな反応や議論があったか1文で","source":"X/Twitter","url":"URL","tags":["使われたハッシュタグ"],"reaction":"ポジティブ"}]`
         }]
       });
       if (data.error) throw new Error(data.error.message);
@@ -484,17 +491,10 @@ export default function App() {
           {/* SNS Tab */}
           {activeTab === "sns" && (
             <div className="fade-in">
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
                 <p className="label" style={{ margin: 0, whiteSpace: "nowrap" }}>期間</p>
-                {[
-                  { label: "24時間", value: "1" },
-                  { label: "3日", value: "3" },
-                  { label: "1週間", value: "7" },
-                  { label: "2週間", value: "14" },
-                  { label: "1ヶ月", value: "30" },
-                ].map(d => (
-                  <button key={d.value}
-                    className={`filter-tag ${snsDays === d.value ? "active" : ""}`}
+                {[{ label: "1週間", value: "7" }, { label: "2週間", value: "14" }, { label: "1ヶ月", value: "30" }].map(d => (
+                  <button key={d.value} className={`filter-tag ${snsDays === d.value ? "active" : ""}`}
                     onClick={() => { setSnsDays(d.value); setSnsPosts([]); setSelectedPost(null); }}>
                     {d.label}
                   </button>
@@ -505,38 +505,58 @@ export default function App() {
                 {SNS_CATEGORIES.map(c => (
                   <button key={c.id} className={`source-btn ${snsCategory.id === c.id ? "active" : ""}`}
                     style={{ flex: "1 1 calc(50% - 4px)", textAlign: "left" }}
-                    onClick={() => { setSnsCategory(c); setSnsPosts([]); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて"); }}>
+                    onClick={() => { setSnsCategory(c); setSelectedHashtags([]); setSnsPosts([]); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて"); }}>
                     {c.emoji} {c.name}
                   </button>
                 ))}
               </div>
+              <p className="label">ハッシュタグで絞り込み（複数選択可・未選択で全タグ検索）</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                {snsCategory.hashtags.map(tag => {
+                  const isSelected = selectedHashtags.includes(tag);
+                  return (
+                    <button key={tag}
+                      onClick={() => {
+                        setSelectedHashtags(prev => isSelected ? prev.filter(t => t !== tag) : [...prev, tag]);
+                        setSnsPosts([]); setSelectedPost(null);
+                      }}
+                      style={{
+                        background: isSelected ? "#1a3a5a" : "#11111a",
+                        border: `1px solid ${isSelected ? "#3a6a9a" : "#1c1c2e"}`,
+                        color: isSelected ? "#7eb8f7" : "#555",
+                        borderRadius: 20, padding: "5px 14px", fontSize: 12,
+                        fontFamily: "inherit", cursor: "pointer", transition: "all .2s"
+                      }}>
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedHashtags.length > 0 && (
+                <div style={{ fontSize: 11, color: "#3a5a8a", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>検索: {selectedHashtags.join(" ")}</span>
+                  <button onClick={() => setSelectedHashtags([])}
+                    style={{ background: "none", border: "1px solid #3a2a2a", color: "#7a4a4a", cursor: "pointer", fontSize: 10, borderRadius: 4, padding: "2px 8px", fontFamily: "inherit" }}>
+                    クリア
+                  </button>
+                </div>
+              )}
               <button className="btn-fetch" disabled={snsLoading || !apiKey} onClick={fetchSnsPosts} style={{ marginBottom: 16 }}>
-                {snsLoading ? <><span className="loading-spin" />検索中...</> : `𝕏 「${snsCategory.name}」のトレンドを検索`}
+                {snsLoading
+                  ? <><span className="loading-spin" />検索中（20〜30秒）...</>
+                  : `𝕏 ${selectedHashtags.length > 0 ? selectedHashtags.join(" ") : snsCategory.hashtags.slice(0,3).join(" ")} を検索`}
               </button>
               {snsError && <p style={{ fontSize: 12, color: "#f87171", background: "#1a0a0a", padding: "10px 14px", borderRadius: 8, marginBottom: 12 }}>⚠ {snsError}</p>}
               {snsPosts.length > 0 && (
                 <div className="slide-in">
-                  {snsCategory.filters?.length > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                      <p className="label">絞り込み</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {["すべて", ...snsCategory.filters].map(f => (
-                          <button key={f} className={`filter-tag ${snsFilter === f ? "active" : ""}`}
-                            onClick={() => { setSnsFilter(f); setSelectedPost(null); }}>
-                            {f}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <p className="label">{(snsFilter === "すべて" ? snsPosts : snsPosts.filter(p => (p.title + p.summary + (p.tags||[]).join(" ")).includes(snsFilter))).length}件表示</p>
+                  <p className="label">{snsPosts.length}件表示</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                    {(snsFilter === "すべて" ? snsPosts : snsPosts.filter(p => (p.title + p.summary + (p.tags||[]).join(" ")).includes(snsFilter))).map((post, i) => (
+                    {snsPosts.map((post, i) => (
                       <div key={i} className={`news-card ${selectedPost === post ? "selected" : ""}`}
                         onClick={() => { setSelectedPost(post); setGenerated(null); setApproved(false); }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
                               <p style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: selectedPost === post ? "#c8d8f0" : "#bbb" }}>{post.title}</p>
                               {post.reaction && (
                                 <span style={{
@@ -550,9 +570,7 @@ export default function App() {
                             {post.summary && <p style={{ fontSize: 11.5, color: "#445", lineHeight: 1.6 }}>{post.summary}</p>}
                             <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                               {post.source && <span style={{ fontSize: 10, color: "#3a5a8a" }}>📰 {post.source}</span>}
-                              {post.tags?.map(tag => (
-                                <span key={tag} style={{ fontSize: 10, color: "#4a6a4a", background: "#0a140a", border: "1px solid #1a3a1a", borderRadius: 10, padding: "1px 8px" }}>{tag}</span>
-                              ))}
+                              {post.tags?.map(tag => <span key={tag} style={{ fontSize: 10, color: "#4a6a4a", background: "#0a140a", border: "1px solid #1a3a1a", borderRadius: 10, padding: "1px 8px" }}>{tag}</span>)}
                             </div>
                           </div>
                           {post.url && post.url !== "https://example.com" && (
@@ -568,11 +586,12 @@ export default function App() {
               )}
               {snsPosts.length === 0 && !snsLoading && !snsError && (
                 <div style={{ textAlign: "center", padding: "28px 0", color: "#2a2a4a", fontSize: 13 }}>
-                  カテゴリを選んで検索ボタンを押してください
+                  ハッシュタグを選んで検索ボタンを押してください
                 </div>
               )}
             </div>
           )}
+
 
           {/* Custom Tab */}
           {activeTab === "custom" && (
