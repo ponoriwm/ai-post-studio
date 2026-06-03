@@ -190,17 +190,27 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${snsCategory.query} で過去${snsDays}日以内に話題になった投稿・議論を検索してください。5件まとめて以下のJSON配列のみを返してください。説明不要。
+          content: `${snsCategory.query} で過去${snsDays}日以内に話題になった投稿・議論を検索してください。必ず5件、以下のJSON配列のみを返してください。説明不要。途中で切れないよう短めに書いてください。
 
-[{"title":"話題のタイトル","summary":"どんな議論や反応があったか2文で","source":"情報源","url":"URL","tags":["タグ1","タグ2"],"reaction":"ポジティブ/ネガティブ/議論中"}]`
+[{"title":"話題タイトル(30文字以内)","summary":"1文の要約","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
         }]
       });
       if (data.error) throw new Error(data.error.message);
-      const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
-      const m = allText.match(/\`\`\`(?:json)?\s*([\s\S]*?)\`\`\`/);
-      let items;
-      if (m) { items = JSON.parse(m[1].trim()); }
-      else { const s = allText.indexOf("["), e = allText.lastIndexOf("]"); items = JSON.parse(allText.slice(s, e + 1)); }
+      const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("
+");
+      if (!allText) throw new Error("レスポンスが空です");
+      let items = null;
+      // ```json...``` 形式
+      const m = allText.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (m) {
+        items = JSON.parse(m[1].trim());
+      } else {
+        // [ ... ] 形式
+        const s = allText.indexOf("[");
+        const e = allText.lastIndexOf("]");
+        if (s !== -1 && e !== -1) items = JSON.parse(allText.slice(s, e + 1));
+      }
+      if (!items || !items.length) throw new Error("記事が取得できませんでした");
       setSnsPosts(items);
     } catch (e) { setSnsError("取得に失敗しました: " + e.message); }
     finally { setSnsLoading(false); }
