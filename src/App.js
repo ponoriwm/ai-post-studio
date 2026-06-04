@@ -172,7 +172,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("search");
 
   // SNSポスト検索
-  const [snsCategory, setSnsCategory] = useState(SNS_CATEGORIES[0]);
+  const [selectedSnsCategories, setSelectedSnsCategories] = useState([SNS_CATEGORIES[0]]);
   const [selectedHashtags, setSelectedHashtags] = useState([]);
   const [snsPosts, setSnsPosts] = useState([]);
   const [snsLoading, setSnsLoading] = useState(false);
@@ -249,11 +249,20 @@ export default function App() {
     finally { setFetchLoading(false); }
   }
 
+  function toggleSnsCategory(cat) {
+    setSelectedSnsCategories(prev => {
+      const exists = prev.find(c => c.id === cat.id);
+      if (exists) return prev.length === 1 ? prev : prev.filter(c => c.id !== cat.id);
+      return [...prev, cat];
+    });
+    setSnsPosts([]); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて"); setSelectedHashtags([]);
+  }
+
   async function fetchSnsPosts() {
     if (!apiKey) { setSnsError("APIキーを設定してください"); return; }
 
     // キャッシュチェック
-    const snsCacheKey = getCacheKey("sns", snsCategory.id + (selectedHashtags.join("")), snsDays);
+    const snsCacheKey = getCacheKey("sns", selectedSnsCategories.map(c => c.id).join("-") + selectedHashtags.join(""), snsDays);
     const snsCached = getCache(snsCacheKey);
     if (snsCached) {
       setSnsPosts(snsCached);
@@ -268,11 +277,11 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${(selectedHashtags.length > 0 ? selectedHashtags : snsCategory.hashtags.slice(0,3)).join(" ")} の過去${snsDays}日以内のXでの投稿・反応・議論を検索してください。3件だけまとめて以下のJSON配列のみを返してください。説明不要。必ずJSONを最後まで完結させてください。
+          content: `${selectedHashtags.length > 0 ? selectedHashtags.join(" ") : selectedSnsCategories.flatMap(c => c.hashtags.slice(0,2)).join(" ")} の過去${snsDays}日以内のXでの投稿・反応・議論を検索してください。3件だけまとめて以下のJSON配列のみを返してください。説明不要。必ずJSONを最後まで完結させてください。
 
 [{"title":"タイトル(20文字以内)","summary":"1文で","source":"X/Twitter","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
         }]
-      });
+      }, MODEL_SEARCH);
       if (data.error) throw new Error(data.error.message);
       const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
       if (!allText) throw new Error("textブロックなし: " + JSON.stringify(data.content?.map(b=>b.type)));
@@ -632,19 +641,39 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <p className="label">カテゴリを選択</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
-                {SNS_CATEGORIES.map(c => (
-                  <button key={c.id} className={`source-btn ${snsCategory.id === c.id ? "active" : ""}`}
-                    style={{ flex: "1 1 calc(50% - 4px)", textAlign: "left" }}
-                    onClick={() => { setSnsCategory(c); setSelectedHashtags([]); setSnsPosts([]); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて"); }}>
-                    {c.emoji} {c.name}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
+                <p className="label" style={{ margin: 0 }}>カテゴリを選択（複数可）</p>
+                {selectedSnsCategories.length > 1 && (
+                  <button onClick={() => { setSelectedSnsCategories([SNS_CATEGORIES[0]]); setSnsPosts([]); setSelectedPost(null); setSelectedHashtags([]); }}
+                    style={{ background: "none", border: "1px solid #2a2a4a", color: "#5a5a8a", borderRadius: 4, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>
+                    リセット
                   </button>
-                ))}
+                )}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
+                {SNS_CATEGORIES.map(c => {
+                  const isSelected = selectedSnsCategories.find(s => s.id === c.id);
+                  return (
+                    <button key={c.id}
+                      style={{
+                        flex: "1 1 calc(50% - 4px)", textAlign: "left",
+                        background: isSelected ? "#0f1825" : "#11111a",
+                        border: `1px solid ${isSelected ? "#3a5a8a" : "#1c1c2e"}`,
+                        color: isSelected ? "#7eb8f7" : "#666",
+                        borderRadius: 8, padding: "8px 12px", fontSize: 12,
+                        fontFamily: "inherit", cursor: "pointer", transition: "all .2s",
+                        position: "relative"
+                      }}
+                      onClick={() => toggleSnsCategory(c)}>
+                      {isSelected && <span style={{ position: "absolute", top: 4, right: 6, fontSize: 9, color: "#7eb8f7" }}>✓</span>}
+                      {c.emoji} {c.name}
+                    </button>
+                  );
+                })}
               </div>
               <p className="label">ハッシュタグで絞り込み（複数選択可・未選択で全タグ検索）</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-                {snsCategory.hashtags.map(tag => {
+                {[...new Set(selectedSnsCategories.flatMap(c => c.hashtags))].map(tag => {
                   const isSelected = selectedHashtags.includes(tag);
                   return (
                     <button key={tag}
@@ -676,7 +705,7 @@ export default function App() {
               <button className="btn-fetch" disabled={snsLoading || !apiKey} onClick={fetchSnsPosts} style={{ marginBottom: 16 }}>
                 {snsLoading
                   ? <><span className="loading-spin" />検索中（20〜30秒）...</>
-                  : `𝕏 ${selectedHashtags.length > 0 ? selectedHashtags.join(" ") : snsCategory.hashtags.slice(0,3).join(" ")} を検索`}
+                  : `𝕏 ${selectedSnsCategories.length === 1 ? selectedSnsCategories[0].name : selectedSnsCategories.length + "カテゴリ"} を検索`}
               </button>
               {snsError && <p style={{ fontSize: 12, color: "#f87171", background: "#1a0a0a", padding: "10px 14px", borderRadius: 8, marginBottom: 12 }}>⚠ {snsError}</p>}
               {snsPosts.length > 0 && (
