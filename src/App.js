@@ -229,9 +229,9 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${selectedCategories.map(c => c.query).join(" OR ")} の最新AIニュースを検索してください。期間：過去${dateRange}日以内の記事のみ。3件だけまとめて以下のJSON配列のみを返してください。説明不要。必ずJSONを最後まで完結させてください。
+          content: `${selectedCategories.map(c => c.query).join(" OR ")} の最新AIニュースを検索してください。期間：過去${dateRange}日以内。10件を以下のJSON配列で返してください。各フィールドは必ず20文字以内で簡潔に。JSONのみ・説明不要・必ず最後の]まで出力してください。
 
-[{"title":"タイトル","summary":"1文の要約","source":"メディア名","url":"URL","tags":["タグ1"]}]`
+[{"title":"20文字以内","summary":"20文字以内","source":"媒体名","url":"URL","tags":["タグ"]}]`
         }]
       }, MODEL_SEARCH);
       if (data.error) throw new Error(data.error.message);
@@ -280,9 +280,9 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${tags.slice(0, 5).join(" ")} に関して過去${snsDays}日以内にXやSNSで話題になったトピック・議論・トレンドを検索してください。3件まとめて以下のJSON配列のみを返してください。説明不要。必ずJSONを最後まで完結させてください。
+          content: `${tags.slice(0, 5).join(" ")} に関して過去${snsDays}日以内にSNSで話題になったトピック・議論・トレンドを検索してください。10件を以下のJSON配列で返してください。各フィールドは必ず20文字以内で簡潔に。JSONのみ・説明不要・必ず最後の]まで出力してください。
 
-[{"title":"話題(20文字以内)","summary":"1文","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
+[{"title":"20文字以内","summary":"20文字以内","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
         }]
       }, MODEL_SEARCH);
       if (data.error) throw new Error(data.error.message);
