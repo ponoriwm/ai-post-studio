@@ -272,14 +272,17 @@ export default function App() {
 
     setSnsLoading(true); setSnsError(""); setSnsPosts([]); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて");
     try {
+      const tags = selectedHashtags.length > 0
+        ? selectedHashtags
+        : selectedSnsCategories.flatMap(c => c.hashtags.slice(0, 2));
       const data = await callAPI(apiKey, {
-        max_tokens: 8000,
+        max_tokens: 4000,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${selectedHashtags.length > 0 ? selectedHashtags.join(" ") : selectedSnsCategories.flatMap(c => c.hashtags.slice(0,2)).join(" ")} の過去${snsDays}日以内のXでの投稿・反応・議論を検索してください。3件だけまとめて以下のJSON配列のみを返してください。説明不要。必ずJSONを最後まで完結させてください。
+          content: `${tags.slice(0, 5).join(" ")} に関して過去${snsDays}日以内にXやSNSで話題になったトピック・議論・トレンドを検索してください。3件まとめて以下のJSON配列のみを返してください。説明不要。必ずJSONを最後まで完結させてください。
 
-[{"title":"タイトル(20文字以内)","summary":"1文で","source":"X/Twitter","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
+[{"title":"話題(20文字以内)","summary":"1文","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
         }]
       }, MODEL_SEARCH);
       if (data.error) throw new Error(data.error.message);
