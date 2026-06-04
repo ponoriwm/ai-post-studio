@@ -846,6 +846,15 @@ export default function App() {
         {queue.length > 0 && (
           <div className="slide-in">
             <p className="label">投稿キュー</p>
+            <div style={{ background: "#0a1a0a", border: "1px solid #1a3a1a", borderRadius: 8, padding: "10px 12px", marginBottom: 14 }}>
+              <p style={{ fontSize: 11, color: "#4a8a4a", lineHeight: 1.7 }}>
+                💡 <strong>引用リポストの手順</strong><br/>
+                ① コメントをコピー<br/>
+                ② 元記事を開く<br/>
+                ③ Xで「リポスト」→「引用する」<br/>
+                ④ コメントを貼り付けて投稿
+              </p>
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {queue.map((item, i) => (
                 <div key={item.id} className="queue-item">
@@ -855,14 +864,8 @@ export default function App() {
                       onClick={() => setQueue(q => q.filter((_, idx) => idx !== i))}>×</button>
                   </div>
                   <p style={{ fontSize: 12.5, lineHeight: 1.7, marginBottom: 8, color: "#ccc" }}>{item.text}</p>
-                  {isValidUrl(item.url) && (
-                    <a href={item.url} target="_blank" rel="noreferrer"
-                      style={{ display: "block", fontSize: 11, color: "#3a5a8a", marginBottom: 10, wordBreak: "break-all", lineHeight: 1.5 }}>
-                      🔗 {item.source || "元記事を開く"}
-                    </a>
-                  )}
-                  {!isValidUrl(item.url) && (
-                    <p style={{ fontSize: 10, color: "#3a3a5a", marginBottom: 10 }}>※ URLなし（元記事を別途確認してください）</p>
+                  {item.source && (
+                    <p style={{ fontSize: 10, color: "#3a5a8a", marginBottom: 6 }}>📰 {item.source}</p>
                   )}
                   {(() => {
                     const tid = item.id + "_text";
@@ -876,14 +879,15 @@ export default function App() {
                       cursor: "pointer", flex: 1, transition: "all 0.3s"
                     });
                     return (
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => copyWithFeedback(tid, item.text)} style={btnStyle(tid)}>
-                          {copied(tid) ? "✓ コピーしました！" : "📋 投稿をコピー"}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <button onClick={() => copyWithFeedback(tid, item.text)} style={{ ...btnStyle(tid), width: "100%" }}>
+                          {copied(tid) ? "✓ コピーしました！" : "📋 引用リポスト用コメントをコピー"}
                         </button>
                         {isValidUrl(item.url) && (
-                          <button onClick={() => copyWithFeedback(uid, item.text + "\n" + item.url)} style={btnStyle(uid)}>
-                            {copied(uid) ? "✓ コピーしました！" : "📋 投稿＋URL"}
-                          </button>
+                          <a href={item.url} target="_blank" rel="noreferrer"
+                            style={{ display: "block", textAlign: "center", background: "#0a1a0a", border: "1px solid #1a4a1a", color: "#4a9a4a", borderRadius: 6, padding: "6px 12px", fontSize: 11, textDecoration: "none", transition: "all 0.2s" }}>
+                            🔗 元記事を開いて引用リポスト →
+                          </a>
                         )}
                       </div>
                     );
@@ -892,7 +896,7 @@ export default function App() {
               ))}
               <button className="btn-ghost" style={{ fontSize: 11, transition: "all 0.3s", color: copiedId === "all" ? "#34d399" : undefined, borderColor: copiedId === "all" ? "#1a4a3a" : undefined }}
                 onClick={() => copyWithFeedback("all", queue.map((q, i) => `【${i + 1}】${q.text}${q.url ? "\n" + q.url : ""}`).join("\n\n"))}>
-                {copiedId === "all" ? "✓ コピーしました！" : "📋 全件まとめてコピー"}
+                {copiedId === "all" ? "✓ コピーしました！" : "📋 全コメントをまとめてコピー"}
               </button>
             </div>
           </div>
