@@ -267,9 +267,14 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${selectedCategories.map(c => c.query).join(" OR ")} の最新AIニュースを検索してください。期間：過去${dateRange}日以内。5件をJSON配列で返してください。titleは30文字以内、summaryは50文字以内。urlは必ず実在する記事の正確なURLを入れてください（架空のURLは不可）。JSONのみ・説明不要・必ず]で終わること。
+          content: (() => {
+            const today = new Date();
+            const since = new Date(today - dateRange * 24 * 60 * 60 * 1000);
+            const fmt = d => d.toISOString().slice(0, 10);
+            return `今日は${fmt(today)}です。${selectedCategories.map(c => c.query).join(" OR ")} に関して、${fmt(since)}以降（過去${dateRange}日以内）に公開されたニュース記事のみを検索してください。それより古い記事は含めないでください。5件をJSON配列で返してください。titleは30文字以内、summaryは50文字以内。urlは実在する正確なURLを入れてください。JSONのみ・説明不要・必ず]で終わること。
 
-[{"title":"タイトル","summary":"要約","source":"媒体名","url":"https://実在するURL","tags":["タグ"]}]`
+[{"title":"タイトル","summary":"要約","source":"媒体名","url":"https://実在するURL","tags":["タグ"],"date":"${fmt(today)}"}]`;
+          })()
         }]
       }, MODEL_SEARCH);
       if (data.error) throw new Error(data.error.message);
@@ -329,9 +334,14 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${tags.slice(0, 5).join(" ")} に関して過去${snsDays}日以内にSNSで話題になったトピック・議論を検索してください。5件をJSON配列で返してください。titleは30文字以内、summaryは50文字以内。JSONのみ・説明不要・必ず]で終わること。
+          content: (() => {
+            const today = new Date();
+            const since = new Date(today - snsDays * 24 * 60 * 60 * 1000);
+            const fmt = d => d.toISOString().slice(0, 10);
+            return `今日は${fmt(today)}です。${tags.slice(0, 5).join(" ")} に関して、${fmt(since)}以降（過去${snsDays}日以内）にSNSで話題になったトピック・議論のみを検索してください。それより古い情報は含めないでください。5件をJSON配列で返してください。titleは30文字以内、summaryは50文字以内。JSONのみ・説明不要・必ず]で終わること。
 
-[{"title":"タイトル","summary":"要約","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
+[{"title":"タイトル","summary":"要約","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`;
+          })()
         }]
       }, MODEL_SEARCH);
       if (data.error) throw new Error(data.error.message);
@@ -660,6 +670,7 @@ export default function App() {
                             {news.summary && <p style={{ fontSize: 11.5, color: "#445", lineHeight: 1.6 }}>{news.summary}</p>}
                             <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
                               {news.source && <span style={{ fontSize: 10, color: "#3a5a8a" }}>📰 {news.source}</span>}
+                              {news.date && <span style={{ fontSize: 10, color: "#3a5a3a" }}>📅 {news.date}</span>}
                               {news.tags?.map(tag => (
                                 <span key={tag} onClick={e => { e.stopPropagation(); setActiveFilter(tag); setSelectedNews(null); }}
                                   style={{ fontSize: 10, color: "#4a6a4a", background: "#0a140a", border: "1px solid #1a3a1a", borderRadius: 10, padding: "1px 8px", cursor: "pointer" }}>
