@@ -229,20 +229,31 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${selectedCategories.map(c => c.query).join(" OR ")} の最新AIニュースを検索してください。期間：過去${dateRange}日以内。10件を以下のJSON配列で返してください。各フィールドは必ず20文字以内で簡潔に。JSONのみ・説明不要・必ず最後の]まで出力してください。
+          content: `${selectedCategories.map(c => c.query).join(" OR ")} の最新AIニュースを検索してください。期間：過去${dateRange}日以内。5件をJSON配列で返してください。titleは30文字以内、summaryは50文字以内。JSONのみ・説明不要・必ず]で終わること。
 
-[{"title":"20文字以内","summary":"20文字以内","source":"媒体名","url":"URL","tags":["タグ"]}]`
+[{"title":"タイトル","summary":"要約","source":"媒体名","url":"URL","tags":["タグ"]}]`
         }]
       }, MODEL_SEARCH);
       if (data.error) throw new Error(data.error.message);
       const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
       const m = allText.match(/```(?:json)?\s*([\s\S]*?)```/);
       let items;
-      if (m) { items = JSON.parse(m[1].trim()); }
-      else {
-        const s = allText.indexOf("["), e = allText.lastIndexOf("]");
-        items = JSON.parse(allText.slice(s, e + 1));
+      try {
+        if (m) { items = JSON.parse(m[1].trim()); }
+        else {
+          const s = allText.indexOf("["), e = allText.lastIndexOf("]");
+          if (s !== -1 && e !== -1) items = JSON.parse(allText.slice(s, e + 1));
+        }
+      } catch {
+        // 不完全なJSONを部分的に救済
+        const s = allText.indexOf("[");
+        if (s !== -1) {
+          const partial = allText.slice(s);
+          const fixed = partial.replace(/,?\s*\{[^}]*$/, "]").replace(/,\s*$/, "]");
+          try { items = JSON.parse(fixed); } catch {}
+        }
       }
+      if (!items?.length) throw new Error("記事が取得できませんでした");
       setCache(cacheKey, items);
       setFetchedNews(items);
     } catch (e) { setFetchError("取得に失敗しました: " + e.message); }
@@ -280,24 +291,31 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${tags.slice(0, 5).join(" ")} に関して過去${snsDays}日以内にSNSで話題になったトピック・議論・トレンドを検索してください。10件を以下のJSON配列で返してください。各フィールドは必ず20文字以内で簡潔に。JSONのみ・説明不要・必ず最後の]まで出力してください。
+          content: `${tags.slice(0, 5).join(" ")} に関して過去${snsDays}日以内にSNSで話題になったトピック・議論を検索してください。5件をJSON配列で返してください。titleは30文字以内、summaryは50文字以内。JSONのみ・説明不要・必ず]で終わること。
 
-[{"title":"20文字以内","summary":"20文字以内","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
+[{"title":"タイトル","summary":"要約","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`
         }]
       }, MODEL_SEARCH);
       if (data.error) throw new Error(data.error.message);
       const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
-      if (!allText) throw new Error("textブロックなし: " + JSON.stringify(data.content?.map(b=>b.type)));
+      if (!allText) throw new Error("レスポンスが空です");
       let items = null;
-      const m = allText.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (m) {
-        items = JSON.parse(m[1].trim());
-      } else {
+      try {
+        const m = allText.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (m) { items = JSON.parse(m[1].trim()); }
+        else {
+          const s = allText.indexOf("["), e = allText.lastIndexOf("]");
+          if (s !== -1 && e !== -1) items = JSON.parse(allText.slice(s, e + 1));
+        }
+      } catch {
         const s = allText.indexOf("[");
-        const e = allText.lastIndexOf("]");
-        if (s !== -1 && e !== -1) items = JSON.parse(allText.slice(s, e + 1));
+        if (s !== -1) {
+          const partial = allText.slice(s);
+          const fixed = partial.replace(/,?\s*\{[^}]*$/, "]").replace(/,\s*$/, "]");
+          try { items = JSON.parse(fixed); } catch {}
+        }
       }
-      if (!items || !items.length) throw new Error("取得失敗。レスポンス: " + allText.slice(0, 200));
+      if (!items?.length) throw new Error("記事が取得できませんでした");
       setCache(snsCacheKey, items);
       setSnsPosts(items);
     } catch (e) { setSnsError("取得に失敗しました: " + e.message); }
