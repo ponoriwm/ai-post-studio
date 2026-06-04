@@ -103,6 +103,15 @@ function callAPI(apiKey, body, model) {
   }).then(r => r.json());
 }
 
+function isValidUrl(url) {
+  if (!url) return false;
+  if (url === "https://example.com" || url === "URL" || url === "URL不明") return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" || u.protocol === "http:";
+  } catch { return false; }
+}
+
 function getCacheKey(type, id, days) {
   return `ai_post_studio_cache_${type}_${id}_${days}`;
 }
@@ -229,9 +238,9 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `${selectedCategories.map(c => c.query).join(" OR ")} の最新AIニュースを検索してください。期間：過去${dateRange}日以内。5件をJSON配列で返してください。titleは30文字以内、summaryは50文字以内。JSONのみ・説明不要・必ず]で終わること。
+          content: `${selectedCategories.map(c => c.query).join(" OR ")} の最新AIニュースを検索してください。期間：過去${dateRange}日以内。5件をJSON配列で返してください。titleは30文字以内、summaryは50文字以内。urlは必ず実在する記事の正確なURLを入れてください（架空のURLは不可）。JSONのみ・説明不要・必ず]で終わること。
 
-[{"title":"タイトル","summary":"要約","source":"媒体名","url":"URL","tags":["タグ"]}]`
+[{"title":"タイトル","summary":"要約","source":"媒体名","url":"https://実在するURL","tags":["タグ"]}]`
         }]
       }, MODEL_SEARCH);
       if (data.error) throw new Error(data.error.message);
@@ -630,10 +639,10 @@ export default function App() {
                               ))}
                             </div>
                           </div>
-                          {news.url && news.url !== "https://example.com" && (
+                          {isValidUrl(news.url) && (
                             <a href={news.url} target="_blank" rel="noreferrer"
                               style={{ fontSize: 10, color: "#3a5a8a", textDecoration: "none", whiteSpace: "nowrap", alignSelf: "flex-start" }}
-                              onClick={e => e.stopPropagation()}>🔗</a>
+                              onClick={e => e.stopPropagation()}>🔗 元記事</a>
                           )}
                         </div>
                       </div>
@@ -755,10 +764,10 @@ export default function App() {
                               {post.tags?.map(tag => <span key={tag} style={{ fontSize: 10, color: "#4a6a4a", background: "#0a140a", border: "1px solid #1a3a1a", borderRadius: 10, padding: "1px 8px" }}>{tag}</span>)}
                             </div>
                           </div>
-                          {post.url && post.url !== "https://example.com" && (
+                          {isValidUrl(post.url) && (
                             <a href={post.url} target="_blank" rel="noreferrer"
                               style={{ fontSize: 10, color: "#3a5a8a", textDecoration: "none", whiteSpace: "nowrap", alignSelf: "flex-start" }}
-                              onClick={e => e.stopPropagation()}>🔗</a>
+                              onClick={e => e.stopPropagation()}>🔗 元記事</a>
                           )}
                         </div>
                       </div>
@@ -846,11 +855,14 @@ export default function App() {
                       onClick={() => setQueue(q => q.filter((_, idx) => idx !== i))}>×</button>
                   </div>
                   <p style={{ fontSize: 12.5, lineHeight: 1.7, marginBottom: 8, color: "#ccc" }}>{item.text}</p>
-                  {item.url && item.url !== "https://example.com" && (
+                  {isValidUrl(item.url) && (
                     <a href={item.url} target="_blank" rel="noreferrer"
                       style={{ display: "block", fontSize: 11, color: "#3a5a8a", marginBottom: 10, wordBreak: "break-all", lineHeight: 1.5 }}>
-                      🔗 {item.source ? item.source : item.url}
+                      🔗 {item.source || "元記事を開く"}
                     </a>
+                  )}
+                  {!isValidUrl(item.url) && (
+                    <p style={{ fontSize: 10, color: "#3a3a5a", marginBottom: 10 }}>※ URLなし（元記事を別途確認してください）</p>
                   )}
                   {(() => {
                     const tid = item.id + "_text";
@@ -868,7 +880,7 @@ export default function App() {
                         <button onClick={() => copyWithFeedback(tid, item.text)} style={btnStyle(tid)}>
                           {copied(tid) ? "✓ コピーしました！" : "📋 投稿をコピー"}
                         </button>
-                        {item.url && item.url !== "https://example.com" && (
+                        {isValidUrl(item.url) && (
                           <button onClick={() => copyWithFeedback(uid, item.text + "\n" + item.url)} style={btnStyle(uid)}>
                             {copied(uid) ? "✓ コピーしました！" : "📋 投稿＋URL"}
                           </button>
