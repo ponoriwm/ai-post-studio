@@ -103,6 +103,35 @@ function callAPI(apiKey, body, model) {
   }).then(r => r.json());
 }
 
+function analyzeError(e, context) {
+  const msg = e?.message || "";
+  if (msg.includes("rate limit") || msg.includes("rate_limit") || msg.includes("529") || msg.includes("overloaded")) {
+    return "⏱ APIの利用制限に達しました。2〜3分待ってから再試行してください。";
+  }
+  if (msg.includes("model") && msg.includes("required")) {
+    return "⚙️ モデル設定エラーです。ページを再読み込みしてください。";
+  }
+  if (msg.includes("401") || msg.includes("invalid_api_key") || msg.includes("authentication")) {
+    return "🔑 APIキーが無効です。右上の🔑ボタンからキーを確認・再設定してください。";
+  }
+  if (msg.includes("Unexpected end of JSON") || msg.includes("JSON") || msg.includes("記事が取得できませんでした")) {
+    if (context === "multi") {
+      return "📉 複数カテゴリの同時検索でレスポンスが長くなりすぎました。カテゴリを1〜2つに絞って再試行してください。";
+    }
+    return "📄 レスポンスの解析に失敗しました。期間を「1週間」以上に変更するか、しばらく待ってから再試行してください。";
+  }
+  if (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed to fetch")) {
+    return "🌐 ネットワークエラーです。接続を確認してから再試行してください。";
+  }
+  if (msg.includes("timeout") || msg.includes("408")) {
+    return "⌛ タイムアウトしました。しばらく待ってから再試行してください。";
+  }
+  if (msg.includes("500") || msg.includes("502") || msg.includes("503")) {
+    return "🔧 サーバーエラーです。数分待ってから再試行してください。";
+  }
+  return "❌ 取得に失敗しました: " + msg.slice(0, 100);
+}
+
 function isValidUrl(url) {
   if (!url) return false;
   if (url === "https://example.com" || url === "URL" || url === "URL不明") return false;
@@ -265,7 +294,7 @@ export default function App() {
       if (!items?.length) throw new Error("記事が取得できませんでした");
       setCache(cacheKey, items);
       setFetchedNews(items);
-    } catch (e) { setFetchError("取得に失敗しました: " + e.message); }
+    } catch (e) { setFetchError(analyzeError(e, selectedCategories.length > 1 ? "multi" : "single")); }
     finally { setFetchLoading(false); }
   }
 
@@ -327,7 +356,7 @@ export default function App() {
       if (!items?.length) throw new Error("記事が取得できませんでした");
       setCache(snsCacheKey, items);
       setSnsPosts(items);
-    } catch (e) { setSnsError("取得に失敗しました: " + e.message); }
+    } catch (e) { setSnsError(analyzeError(e, selectedSnsCategories.length > 1 ? "multi" : "single")); }
     finally { setSnsLoading(false); }
   }
 
@@ -363,7 +392,7 @@ export default function App() {
         setQueue(q => [...q, { id: Date.now(), text, newsTitle: title, url, source, persona: p.name, personaEmoji: p.emoji }]);
         setApproved(true);
       }
-    } catch (e) { setGenerated("エラー: " + e.message); }
+    } catch (e) { setGenerated(analyzeError(e, "single")); }
     finally { setLoading(false); }
   }
 
@@ -601,7 +630,7 @@ export default function App() {
               </button>
 
               {!apiKey && <p style={{ fontSize: 12, color: "#6a5a00", background: "#1a1400", border: "1px solid #3a3000", borderRadius: 8, padding: "10px 14px", marginBottom: 12 }}>⚠ APIキーを設定すると検索が使えます</p>}
-              {fetchError && <p style={{ fontSize: 12, color: "#f87171", background: "#1a0a0a", padding: "10px 14px", borderRadius: 8, marginBottom: 12 }}>⚠ {fetchError}</p>}
+              {fetchError && <p style={{ fontSize: 12, color: "#f87171", background: "#1a0a0a", padding: "12px 14px", borderRadius: 8, marginBottom: 12, lineHeight: 1.7 }}>{fetchError}</p>}
 
               {fetchedNews.length > 0 && (
                 <div className="slide-in">
@@ -737,7 +766,7 @@ export default function App() {
                   ? <><span className="loading-spin" />検索中（20〜30秒）...</>
                   : `𝕏 ${selectedSnsCategories.length === 1 ? selectedSnsCategories[0].name : selectedSnsCategories.length + "カテゴリ"} を検索`}
               </button>
-              {snsError && <p style={{ fontSize: 12, color: "#f87171", background: "#1a0a0a", padding: "10px 14px", borderRadius: 8, marginBottom: 12 }}>⚠ {snsError}</p>}
+              {snsError && <p style={{ fontSize: 12, color: "#f87171", background: "#1a0a0a", padding: "12px 14px", borderRadius: 8, marginBottom: 12, lineHeight: 1.7 }}>{snsError}</p>}
               {snsPosts.length > 0 && (
                 <div className="slide-in">
                   <p className="label">{snsPosts.length}件表示</p>
