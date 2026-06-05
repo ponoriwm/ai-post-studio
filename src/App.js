@@ -708,8 +708,12 @@ export default function App() {
                     {fetchedNews.length === 0 ? (
                       <div style={{ textAlign: "center", padding: "24px 0" }}>
                         <p style={{ fontSize: 28, marginBottom: 8 }}>📭</p>
-                        <p style={{ color: "#5a5a7a", fontSize: 14, marginBottom: 6 }}>0件 — 該当する記事が見つかりませんでした</p>
-                        <p style={{ color: "#3a3a5a", fontSize: 12 }}>期間を長くするか、別のカテゴリを試してみてください</p>
+                        <p style={{ color: "#7a7a9a", fontSize: 14, marginBottom: 6 }}>
+                          過去{dateRange}日以内の「{selectedCategories.map(c => c.name).join(" / ")}」の記事は見つかりませんでした
+                        </p>
+                        <p style={{ color: "#3a3a5a", fontSize: 12, lineHeight: 1.8 }}>
+                          期間を「3日」「1週間」に伸ばすか、<br/>別のカテゴリを試してみてください
+                        </p>
                       </div>
                     ) : filteredNews.length === 0 ? (
                       <p style={{ color: "#3a3a5a", fontSize: 13, padding: "16px 0" }}>「{activeFilter}」に関する記事が見つかりませんでした</p>
