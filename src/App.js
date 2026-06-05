@@ -106,14 +106,15 @@ function callAPI(apiKey, body, model) {
 function filterByDate(items, days) {
   if (!days || !items?.length) return items;
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-  const filtered = items.filter(item => {
-    if (!item.date) return true; // 日付不明は残す
+  cutoff.setDate(cutoff.getDate() - Number(days));
+  cutoff.setHours(0, 0, 0, 0); // 日付の境界を00:00に設定
+  return items.filter(item => {
+    if (!item.date) return false; // 日付不明は除外
     const d = new Date(item.date);
-    if (isNaN(d.getTime())) return true; // パース失敗は残す
+    if (isNaN(d.getTime())) return false; // パース失敗は除外
     return d >= cutoff;
   });
-  return filtered.length > 0 ? filtered : items; // 全部除外されたら元を返す
+  // 0件になっても正直に返す（0件表示UIが対応済み）
 }
 
 function analyzeError(e, context) {
