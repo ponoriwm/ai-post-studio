@@ -314,10 +314,21 @@ export default function App() {
         })).filter(item => item.title);
       }
 
-      if (!items?.length) throw new Error("記事が取得できませんでした");
+      if (!items?.length) {
+        // デバッグ：実際のレスポンスを表示
+        const preview = allText.slice(0, 300).replace(/\n/g, " ");
+        throw new Error("PARSE_FAIL:" + preview);
+      }
       setCache(cacheKey, items);
       setFetchedNews(items);
-    } catch (e) { setFetchError(analyzeError(e, selectedCategories.length > 1 ? "multi" : "single")); }
+    } catch (e) {
+      const msg = e?.message || "";
+      if (msg.startsWith("PARSE_FAIL:")) {
+        setFetchError("🔍 レスポンス内容: " + msg.slice(11));
+      } else {
+        setFetchError(analyzeError(e, selectedCategories.length > 1 ? "multi" : "single"));
+      }
+    }
     finally { setFetchLoading(false); }
   }
 
