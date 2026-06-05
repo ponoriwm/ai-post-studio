@@ -271,7 +271,7 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `今日は${fmt(today)}です。${selectedCategories.map(c => c.query).join(" OR ")} に関して${fmt(since)}以降のニュースを検索し、以下のJSON配列を返してください。必ず5件・各フィールドは短く・JSONのみ・]で必ず終わること。
+          content: `今日は${fmt(today)}です。${selectedCategories.map(c => c.query).join(" OR ")} に関して${fmt(since)}以降のニュースを検索し、以下のJSON配列を返してください。最大5件・最低1件（記事が少なければ1件でもOK）・各フィールドは短く・JSONのみ・必ず]で終わること。
 
 [{"t":"30字以内タイトル","s":"40字以内要約","src":"媒体","u":"URL","d":"日付"}]`
         }]
@@ -314,20 +314,11 @@ export default function App() {
         })).filter(item => item.title);
       }
 
-      if (!items?.length) {
-        // デバッグ：実際のレスポンスを表示
-        const preview = allText.slice(0, 300).replace(/\n/g, " ");
-        throw new Error("PARSE_FAIL:" + preview);
-      }
+      if (!items) items = [];
       setCache(cacheKey, items);
       setFetchedNews(items);
     } catch (e) {
-      const msg = e?.message || "";
-      if (msg.startsWith("PARSE_FAIL:")) {
-        setFetchError("🔍 レスポンス内容: " + msg.slice(11));
-      } else {
-        setFetchError(analyzeError(e, selectedCategories.length > 1 ? "multi" : "single"));
-      }
+      setFetchError(analyzeError(e, selectedCategories.length > 1 ? "multi" : "single"));
     }
     finally { setFetchLoading(false); }
   }
@@ -699,7 +690,13 @@ export default function App() {
                   )}
                   <p className="label">{filteredNews.length}件表示</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                    {filteredNews.length === 0 ? (
+                    {fetchedNews.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "24px 0" }}>
+                        <p style={{ fontSize: 28, marginBottom: 8 }}>📭</p>
+                        <p style={{ color: "#5a5a7a", fontSize: 14, marginBottom: 6 }}>0件 — 該当する記事が見つかりませんでした</p>
+                        <p style={{ color: "#3a3a5a", fontSize: 12 }}>期間を長くするか、別のカテゴリを試してみてください</p>
+                      </div>
+                    ) : filteredNews.length === 0 ? (
                       <p style={{ color: "#3a3a5a", fontSize: 13, padding: "16px 0" }}>「{activeFilter}」に関する記事が見つかりませんでした</p>
                     ) : filteredNews.map((news, i) => (
                       <div key={i} className={`news-card ${selectedNews === news ? "selected" : ""}`}
