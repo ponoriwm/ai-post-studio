@@ -285,7 +285,9 @@ export default function App() {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `今日は${fmt(today)}です。${selectedCategories.map(c => c.query).join(" OR ")} に関して${fmt(since)}以降のニュースを検索し、以下のJSON配列を返してください。最大5件・最低1件（記事が少なければ1件でもOK）・各フィールドは短く・JSONのみ・必ず]で終わること。
+          content: `今日は${fmt(today)}です。${selectedCategories.map(c => c.query).join(" OR ")} に関して${fmt(since)}以降のニュースを検索してください。各記事のページにアクセスしHTMLメタデータ（og:article:published_time・datePublished・pubdate）またはHTTPヘッダー（Last-Modified）から正確な公開日を取得してください。最大5件・JSONのみ・必ず]で終わること。
+
+[{"t":"30字タイトル","s":"40字要約","src":"媒体","u":"URL","d":"メタデータから取得した正確な公開日YYYY-MM-DD"}]`
 
 [{"t":"30字以内タイトル","s":"40字以内要約","src":"媒体","u":"URL","d":"日付"}]`
         }]
