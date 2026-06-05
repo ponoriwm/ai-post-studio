@@ -262,33 +262,39 @@ export default function App() {
 
     setFetchLoading(true); setFetchError(""); setFetchedNews([]); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて"); setApproved(false);
     try {
+      const today = new Date();
+      const since = new Date(today - dateRange * 24 * 60 * 60 * 1000);
+      const fmt = d => d.toISOString().slice(0, 10);
+
       const data = await callAPI(apiKey, {
-        max_tokens: 8000,
+        max_tokens: 4000,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: (() => {
-            const today = new Date();
-            const since = new Date(today - dateRange * 24 * 60 * 60 * 1000);
-            const fmt = d => d.toISOString().slice(0, 10);
-            return `今日は${fmt(today)}です。${selectedCategories.map(c => c.query).join(" OR ")} に関して、${fmt(since)}以降（過去${dateRange}日以内）に公開されたニュース記事のみを検索してください。それより古い記事は含めないでください。5件をJSON配列で返してください。titleは30文字以内、summaryは50文字以内。urlは実在する正確なURLを入れてください。JSONのみ・説明不要・必ず]で終わること。
+          content: `今日は${fmt(today)}です。${selectedCategories.map(c => c.query).join(" OR ")} に関して${fmt(since)}以降のニュースを検索し、以下のJSON配列を返してください。必ず5件・各フィールドは短く・JSONのみ・]で必ず終わること。
 
-[{"title":"タイトル","summary":"要約","source":"媒体名","url":"https://実在するURL","tags":["タグ"],"date":"${fmt(today)}"}]`;
-          })()
+[{"t":"30字以内タイトル","s":"40字以内要約","src":"媒体","u":"URL","d":"日付"}]`
         }]
       }, MODEL_SEARCH);
+
       if (data.error) throw new Error(data.error.message);
       const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+
+      let items = null;
+      // パターン1: ```json...```
       const m = allText.match(/```(?:json)?\s*([\s\S]*?)```/);
-      let items;
-      try {
-        if (m) { items = JSON.parse(m[1].trim()); }
-        else {
-          const s = allText.indexOf("["), e = allText.lastIndexOf("]");
-          if (s !== -1 && e !== -1) items = JSON.parse(allText.slice(s, e + 1));
+      if (m) {
+        try { items = JSON.parse(m[1].trim()); } catch {}
+      }
+      // パターン2: [...] を抽出
+      if (!items) {
+        const s = allText.indexOf("["), e = allText.lastIndexOf("]");
+        if (s !== -1 && e !== -1) {
+          try { items = JSON.parse(allText.slice(s, e + 1)); } catch {}
         }
-      } catch {
-        // 不完全なJSONを部分的に救済
+      }
+      // パターン3: 不完全なJSONを救済
+      if (!items) {
         const s = allText.indexOf("[");
         if (s !== -1) {
           const partial = allText.slice(s);
@@ -296,6 +302,18 @@ export default function App() {
           try { items = JSON.parse(fixed); } catch {}
         }
       }
+      // 短縮フィールドを正規化
+      if (items?.length) {
+        items = items.map(item => ({
+          title: item.title || item.t || "",
+          summary: item.summary || item.s || "",
+          source: item.source || item.src || "",
+          url: item.url || item.u || "",
+          tags: item.tags || [],
+          date: item.date || item.d || "",
+        })).filter(item => item.title);
+      }
+
       if (!items?.length) throw new Error("記事が取得できませんでした");
       setCache(cacheKey, items);
       setFetchedNews(items);
@@ -338,9 +356,9 @@ export default function App() {
             const today = new Date();
             const since = new Date(today - snsDays * 24 * 60 * 60 * 1000);
             const fmt = d => d.toISOString().slice(0, 10);
-            return `今日は${fmt(today)}です。${tags.slice(0, 5).join(" ")} に関して、${fmt(since)}以降（過去${snsDays}日以内）にSNSで話題になったトピック・議論のみを検索してください。それより古い情報は含めないでください。5件をJSON配列で返してください。titleは30文字以内、summaryは50文字以内。JSONのみ・説明不要・必ず]で終わること。
+            return `今日は${fmt(today)}です。${tags.slice(0, 4).join(" ")} に関して${fmt(since)}以降のSNSトレンドを検索し、以下のJSON配列を返してください。必ず5件・各フィールドは短く・JSONのみ・]で必ず終わること。
 
-[{"title":"タイトル","summary":"要約","source":"情報源","url":"URL","tags":["タグ"],"reaction":"ポジティブ"}]`;
+[{"t":"30字タイトル","s":"40字要約","src":"情報源","u":"URL","tags":["タグ"],"r":"ポジティブ"}]`;
           })()
         }]
       }, MODEL_SEARCH);
@@ -362,6 +380,17 @@ export default function App() {
           const fixed = partial.replace(/,?\s*\{[^}]*$/, "]").replace(/,\s*$/, "]");
           try { items = JSON.parse(fixed); } catch {}
         }
+      }
+      // 短縮フィールドを正規化
+      if (items?.length) {
+        items = items.map(item => ({
+          title: item.title || item.t || "",
+          summary: item.summary || item.s || "",
+          source: item.source || item.src || "",
+          url: item.url || item.u || "",
+          tags: item.tags || [],
+          reaction: item.reaction || item.r || "",
+        })).filter(item => item.title);
       }
       if (!items?.length) throw new Error("記事が取得できませんでした");
       setCache(snsCacheKey, items);
