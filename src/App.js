@@ -103,6 +103,19 @@ function callAPI(apiKey, body, model) {
   }).then(r => r.json());
 }
 
+function filterByDate(items, days) {
+  if (!days || !items?.length) return items;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const filtered = items.filter(item => {
+    if (!item.date) return true; // 日付不明は残す
+    const d = new Date(item.date);
+    if (isNaN(d.getTime())) return true; // パース失敗は残す
+    return d >= cutoff;
+  });
+  return filtered.length > 0 ? filtered : items; // 全部除外されたら元を返す
+}
+
 function analyzeError(e, context) {
   const msg = e?.message || "";
   if (msg.includes("rate limit") || msg.includes("rate_limit") || msg.includes("529") || msg.includes("overloaded")) {
@@ -315,8 +328,9 @@ export default function App() {
       }
 
       if (!items) items = [];
-      setCache(cacheKey, items);
-      setFetchedNews(items);
+      const filtered = filterByDate(items, Number(dateRange));
+      setCache(cacheKey, filtered);
+      setFetchedNews(filtered);
     } catch (e) {
       setFetchError(analyzeError(e, selectedCategories.length > 1 ? "multi" : "single"));
     }
