@@ -1,8 +1,13 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const PERSONAS = [
   {
-    id: "wakuwaku", name: "ワクワク系", emoji: "⚡", color: "#1d4ed8", accent: "#7eb8f7", description: "情報＋共感＋問いかけ",
+    id: "wakuwaku",
+    name: "ワクワク系",
+    emoji: "⚡",
+    color: "#1d4ed8",
+    accent: "#7eb8f7",
+    description: "情報＋共感＋問いかけ",
     prompt: `あなたはAI・テクノロジー分野のSNSアカウントとして投稿を行う人格です。
 【人格設定】
 - 専門的な知識を持ちながら、初心者にも丁寧でわかりやすく説明できる
@@ -13,39 +18,59 @@ const PERSONAS = [
 1. 最初の1文：ニュースの核心を簡潔に伝える
 2. 中盤：自分なりの解釈・視点を添える
 3. 最後：読者への問いかけで締める
-【投稿スタイル】140文字以内、ハッシュタグ1〜2個まで、絵文字控えめ`
+【投稿スタイル】140文字以内、ハッシュタグ1〜2個まで、絵文字控えめ`,
   },
   {
-    id: "choro", name: "物知り長老", emoji: "🏔", color: "#78350f", accent: "#fbbf24", description: "含蓄・間・歴史的視点",
+    id: "choro",
+    name: "物知り長老",
+    emoji: "🏔",
+    color: "#78350f",
+    accent: "#fbbf24",
+    description: "含蓄・間・歴史的視点",
     prompt: `あなたはAI・テクノロジー分野のSNSアカウントとして投稿を行う、物知りの長老キャラクターです。
 【人格設定】
 - 長い人生経験と深い知識から、含蓄のある言葉で語る
 - 歴史的・哲学的な視点でテクノロジーを俯瞰する
 - 急がず落ち着いた間合いで語りかける
 【語尾・口調】「〜じゃ」「〜なのじゃ」「〜やもしれぬ」「わしは」「〜ておる」を自然に使う
-【投稿スタイル】140文字以内、ハッシュタグ1〜2個、絵文字なし`
+【投稿スタイル】140文字以内、ハッシュタグ1〜2個、絵文字なし`,
   },
   {
-    id: "shojo", name: "無垢な少女", emoji: "🌸", color: "#9d174d", accent: "#f9a8d4", description: "素直な疑問・じんわり感",
+    id: "shojo",
+    name: "無垢な少女",
+    emoji: "🌸",
+    color: "#9d174d",
+    accent: "#f9a8d4",
+    description: "素直な疑問・じんわり感",
     prompt: `あなたはAI・テクノロジー分野のSNSアカウントとして投稿を行う、無垢で純粋な少女キャラクターです。
 【人格設定】
 - 難しいことを素直な目線で見つめる
 - 純粋な驚きや感動を持つ
 - 誰にでも伝わる言葉で語る
 【語尾・口調】「〜だよね」「〜なんだって」「なんかいいな」「わくわくする」
-【投稿スタイル】140文字以内、ハッシュタグ1〜2個、絵文字1つまで`
+【投稿スタイル】140文字以内、ハッシュタグ1〜2個、絵文字1つまで`,
   },
   {
-    id: "conan", name: "少年探偵系", emoji: "🔍", color: "#1e3a5f", accent: "#60a5fa", description: "鋭い分析・知的好奇心",
-    prompt: `あなたはAI・テクノロジー分野のSNSアカウントとして投稿を行う、江戸川コナンのような秀才少年キャラクターです。
+    id: "conan",
+    name: "少年探偵系",
+    emoji: "🔍",
+    color: "#1e3a5f",
+    accent: "#60a5fa",
+    description: "鋭い分析・知的好奇心",
+    prompt: `あなたはAI・テクノロジー分野のSNSアカウントとして投稿を行う、秀才少年キャラクターです。
 【人格設定】
 - 鋭い観察眼と論理的思考でニュースの本質を見抜く
 - 隠れた真実や見落とされがちな視点を指摘する
 【語尾・口調】「ちょっと待って」「気づいてないかもしれないけど」「つまり…」「真相はもっと深いところにある」
-【投稿スタイル】140文字以内、ハッシュタグ1〜2個、絵文字なし`
+【投稿スタイル】140文字以内、ハッシュタグ1〜2個、絵文字なし`,
   },
   {
-    id: "summary", name: "要約リポスト", emoji: "📌", color: "#374151", accent: "#9ca3af", description: "シンプル要約・情報共有",
+    id: "summary",
+    name: "要約リポスト",
+    emoji: "📌",
+    color: "#374151",
+    accent: "#9ca3af",
+    description: "シンプル要約・情報共有",
     prompt: `あなたはAI・テクノロジーニュースを簡潔に要約してリポストするSNSアカウントです。
 【役割】
 - 主観・感想・コメントは一切入れない
@@ -56,103 +81,95 @@ const PERSONAS = [
 【投稿スタイル】
 - 140文字以内
 - 事実のみ、意見・感想なし
-- 「〜が発表」「〜が明らかに」「〜を発表」などの客観的な表現を使う
-- 絵文字は使わない`
-  }
+- 絵文字は使わない`,
+  },
 ];
 
 const NEWS_CATEGORIES = [
   { id: "tools", name: "AIツール・新モデル", emoji: "🤖", query: "最新AIツール 新モデル発表 OpenAI Anthropic Google", filters: [] },
   { id: "policy", name: "AI規制・政策", emoji: "⚖️", query: "AI規制 政策 法律 社会影響", filters: [] },
   { id: "global", name: "海外AIニュース", emoji: "🌐", query: "AI latest news OpenAI Google Anthropic breakthrough", filters: [] },
-  { id: "japan", name: "国内AIニュース", emoji: "🇯🇵", query: "日本 AI人工知能 企業活用", filters: [] },
+  { id: "japan", name: "国内AIニュース", emoji: "🇯🇵", query: "日本 AI 人工知能 企業活用", filters: [] },
   { id: "entame", name: "AI×エンタメ", emoji: "🎬", query: "AI 映画 音楽 ゲーム アニメ エンターテイメント", filters: ["映画", "ゲーム", "音楽", "アニメ", "動画生成"] },
   { id: "ip", name: "AI×IP・著作権", emoji: "⚡", query: "AI 著作権 IP キャラクター 知的財産 訴訟", filters: ["著作権", "訴訟", "キャラクター", "音楽著作権", "規制"] },
 ];
 
 const SNS_CATEGORIES = [
-  { id: "tools", name: "AIツール・新モデル", emoji: "🤖",
-    hashtags: ["#ChatGPT", "#Claude", "#Gemini", "#生成AI", "#AIツール", "#OpenAI", "#Anthropic"] },
-  { id: "policy", name: "AI規制・政策", emoji: "⚖️",
-    hashtags: ["#AI規制", "#AIガバナンス", "#AI法", "#EUAIAct", "#AIリスク", "#AI倫理"] },
-  { id: "global", name: "海外トレンド", emoji: "🌐",
-    hashtags: ["#ArtificialIntelligence", "#MachineLearning", "#GPT", "#AINews", "#DeepLearning", "#LLM"] },
-  { id: "japan", name: "国内トレンド", emoji: "🇯🇵",
-    hashtags: ["#AI", "#人工知能", "#生成AI", "#ChatGPT日本語", "#AI活用", "#DX"] },
-  { id: "entame", name: "AI×エンタメ", emoji: "🎬",
-    hashtags: ["#AIアート", "#AI音楽", "#AIゲーム", "#AIアニメ", "#AI動画", "#Sora", "#画像生成AI"] },
-  { id: "ip", name: "AI×IP・著作権", emoji: "⚡",
-    hashtags: ["#AI著作権", "#AIと著作権", "#生成AIと著作権", "#AIイラスト問題", "#AIコンテンツ"] },
+  { id: "tools", name: "AIツール・新モデル", emoji: "🤖", hashtags: ["#ChatGPT", "#Claude", "#Gemini", "#生成AI", "#AIツール", "#OpenAI", "#Anthropic"] },
+  { id: "policy", name: "AI規制・政策", emoji: "⚖️", hashtags: ["#AI規制", "#AIガバナンス", "#AI法", "#EUAIAct", "#AIリスク", "#AI倫理"] },
+  { id: "global", name: "海外トレンド", emoji: "🌐", hashtags: ["#ArtificialIntelligence", "#MachineLearning", "#GPT", "#AINews", "#DeepLearning", "#LLM"] },
+  { id: "japan", name: "国内トレンド", emoji: "🇯🇵", hashtags: ["#AI", "#人工知能", "#生成AI", "#ChatGPT日本語", "#AI活用", "#DX"] },
+  { id: "entame", name: "AI×エンタメ", emoji: "🎬", hashtags: ["#AIアート", "#AI音楽", "#AIゲーム", "#AIアニメ", "#AI動画", "#Sora", "#画像生成AI"] },
+  { id: "ip", name: "AI×IP・著作権", emoji: "⚡", hashtags: ["#AI著作権", "#AIと著作権", "#生成AIと著作権", "#AIイラスト問題", "#AIコンテンツ"] },
 ];
 
-const API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL_SEARCH = "claude-haiku-4-5";   // ニュース検索用（安い）
-const MODEL_GEN    = "claude-sonnet-4-5";  // コメント生成用（高品質）
-const CACHE_TTL    = 3 * 60 * 60 * 1000;  // キャッシュ有効期間：3時間
+const MODEL_SEARCH = "gpt-4.1-mini";
+const MODEL_GEN = "gpt-4.1";
+const CACHE_TTL = 3 * 60 * 60 * 1000;
 
-function callAPI(apiKey, body, model) {
-  return fetch(API_URL, {
+async function callOpenAI(apiKey, { model, instructions, input, max_output_tokens = 1200, useSearch = false }) {
+  const response = await fetch("/api/openai", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
+      "x-openai-key": apiKey,
     },
-    body: JSON.stringify({ model: model, ...body }),
-  }).then(r => r.json());
+    body: JSON.stringify({
+      model,
+      instructions,
+      input,
+      max_output_tokens,
+      tools: useSearch ? [{ type: "web_search_preview" }] : [],
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok || data.error) {
+    throw new Error(data.error?.message || "OpenAI API request failed");
+  }
+  return data.output_text || "";
+}
+
+function extractJsonArray(text) {
+  if (!text) return null;
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) {
+    try { return JSON.parse(fenced[1].trim()); } catch {}
+  }
+  const start = text.indexOf("[");
+  const end = text.lastIndexOf("]");
+  if (start !== -1 && end !== -1 && end > start) {
+    try { return JSON.parse(text.slice(start, end + 1)); } catch {}
+  }
+  if (start !== -1) {
+    const fixed = text.slice(start).replace(/,?\s*\{[^}]*$/, "]").replace(/,\s*$/, "]");
+    try { return JSON.parse(fixed); } catch {}
+  }
+  return null;
+}
+
+function normalizeNews(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map(item => ({
+    title: item.title || item.t || "",
+    summary: item.summary || item.s || "",
+    source: item.source || item.src || "",
+    url: item.url || item.u || "",
+    tags: item.tags || [],
+    date: item.date || item.d || "",
+    reaction: item.reaction || item.r || "",
+  })).filter(item => item.title);
 }
 
 function filterByDate(items, days) {
   if (!days || !items?.length) return items;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - Number(days));
-  cutoff.setHours(0, 0, 0, 0); // 日付の境界を00:00に設定
+  cutoff.setHours(0, 0, 0, 0);
   return items.filter(item => {
-    if (!item.date) return false; // 日付不明は除外
-    const d = new Date(item.date);
-    if (isNaN(d.getTime())) return false; // パース失敗は除外
-    return d >= cutoff;
+    if (!item.date) return false;
+    const date = new Date(item.date);
+    return !Number.isNaN(date.getTime()) && date >= cutoff;
   });
-  // 0件になっても正直に返す（0件表示UIが対応済み）
-}
-
-function analyzeError(e, context) {
-  const msg = e?.message || "";
-  if (msg.includes("rate limit") || msg.includes("rate_limit") || msg.includes("529") || msg.includes("overloaded")) {
-    return "⏱ APIの利用制限に達しました。2〜3分待ってから再試行してください。";
-  }
-  if (msg.includes("model") && msg.includes("required")) {
-    return "⚙️ モデル設定エラーです。ページを再読み込みしてください。";
-  }
-  if (msg.includes("401") || msg.includes("invalid_api_key") || msg.includes("authentication")) {
-    return "🔑 APIキーが無効です。右上の🔑ボタンからキーを確認・再設定してください。";
-  }
-  if (msg.includes("Unexpected end of JSON") || msg.includes("JSON") || msg.includes("記事が取得できませんでした")) {
-    if (context === "multi") {
-      return "📉 複数カテゴリの同時検索でレスポンスが長くなりすぎました。カテゴリを1〜2つに絞って再試行してください。";
-    }
-    return "📄 レスポンスの解析に失敗しました。期間を「1週間」以上に変更するか、しばらく待ってから再試行してください。";
-  }
-  if (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed to fetch")) {
-    return "🌐 ネットワークエラーです。接続を確認してから再試行してください。";
-  }
-  if (msg.includes("timeout") || msg.includes("408")) {
-    return "⌛ タイムアウトしました。しばらく待ってから再試行してください。";
-  }
-  if (msg.includes("500") || msg.includes("502") || msg.includes("503")) {
-    return "🔧 サーバーエラーです。数分待ってから再試行してください。";
-  }
-  return "❌ 取得に失敗しました: " + msg.slice(0, 100);
-}
-
-function isValidUrl(url) {
-  if (!url) return false;
-  if (url === "https://example.com" || url === "URL" || url === "URL不明") return false;
-  try {
-    const u = new URL(url);
-    return u.protocol === "https:" || u.protocol === "http:";
-  } catch { return false; }
 }
 
 function getCacheKey(type, id, days) {
@@ -164,84 +181,94 @@ function getCache(key) {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const { data, ts } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) { localStorage.removeItem(key); return null; }
+    if (Date.now() - ts > CACHE_TTL) {
+      localStorage.removeItem(key);
+      return null;
+    }
     return data;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function setCache(key, data) {
   try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch {}
 }
 
+function isValidUrl(url) {
+  if (!url || url === "https://example.com" || url === "URL" || url === "URL不明") return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" || u.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function analyzeError(error, context) {
+  const msg = error?.message || "";
+  if (msg.includes("rate") || msg.includes("429")) return "⏱ APIの利用制限に達しました。少し待ってから再試行してください。";
+  if (msg.includes("401") || msg.includes("invalid") || msg.includes("authentication") || msg.includes("API key")) return "🔑 OpenAI APIキーが無効です。右上の🔑ボタンから確認してください。";
+  if (msg.includes("JSON") || msg.includes("記事が取得できませんでした")) {
+    return context === "multi"
+      ? "📉 複数カテゴリの検索結果が長くなりすぎました。カテゴリを1〜2つに絞って再試行してください。"
+      : "📄 レスポンス解析に失敗しました。期間を伸ばすか、再試行してください。";
+  }
+  if (msg.includes("fetch") || msg.includes("network")) return "🌐 ネットワークエラーです。接続を確認してください。";
+  return "❌ 取得に失敗しました: " + msg.slice(0, 120);
+}
+
 function TypewriterText({ text, speed = 15 }) {
   const [displayed, setDisplayed] = useState("");
   const [done, setDone] = useState(false);
   const idx = useRef(0);
+
   useEffect(() => {
-    setDisplayed(""); setDone(false); idx.current = 0;
-    if (!text) return;
-    const iv = setInterval(() => {
-      if (idx.current < text.length) { setDisplayed(text.slice(0, idx.current + 1)); idx.current++; }
-      else { setDone(true); clearInterval(iv); }
+    setDisplayed("");
+    setDone(false);
+    idx.current = 0;
+    if (!text) return undefined;
+    const timer = setInterval(() => {
+      if (idx.current < text.length) {
+        setDisplayed(text.slice(0, idx.current + 1));
+        idx.current += 1;
+      } else {
+        setDone(true);
+        clearInterval(timer);
+      }
     }, speed);
-    return () => clearInterval(iv);
-  }, [text]);
+    return () => clearInterval(timer);
+  }, [text, speed]);
+
   return <span>{displayed}{!done && <span className="cursor">▍</span>}</span>;
 }
 
 export default function App() {
-  // APIキー（localStorageに永続化）
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("ai_post_studio_key") || "");
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem("ai_post_studio_openai_key") || "");
   const [apiKeyInput, setApiKeyInput] = useState("");
-  const [showApiSetup, setShowApiSetup] = useState(() => !localStorage.getItem("ai_post_studio_key"));
-  const [showApiKey, setShowApiKey] = useState(false);
-
-  function saveApiKey(key) {
-    setApiKey(key);
-    localStorage.setItem("ai_post_studio_key", key);
-    setShowApiSetup(false);
-  }
-  function removeApiKey() {
-    setApiKey(""); setApiKeyInput("");
-    localStorage.removeItem("ai_post_studio_key");
-    setShowApiSetup(true);
-  }
-
-  // ペルソナ
+  const [showApiSetup, setShowApiSetup] = useState(() => !localStorage.getItem("ai_post_studio_openai_key"));
   const [selectedPersonaId, setSelectedPersonaId] = useState("wakuwaku");
   const [customPersona, setCustomPersona] = useState(null);
   const [showPersona, setShowPersona] = useState(false);
-
-  // ニュース
-  const [fetchedNews, setFetchedNews] = useState([]);
-  const [fetchLoading, setFetchLoading] = useState(false);
-  const [fetchError, setFetchError] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState([NEWS_CATEGORIES[0]]);
-  const [activeFilter, setActiveFilter] = useState("すべて");
-  const [dateRange, setDateRange] = useState("7");
-  const [selectedNews, setSelectedNews] = useState(null);
-  const [customNews, setCustomNews] = useState("");
   const [activeTab, setActiveTab] = useState("search");
 
-  // SNSポスト検索
+  const [selectedCategories, setSelectedCategories] = useState([NEWS_CATEGORIES[0]]);
+  const [dateRange, setDateRange] = useState("7");
+  const [fetchedNews, setFetchedNews] = useState([]);
+  const [selectedNews, setSelectedNews] = useState(null);
+  const [fetchLoading, setFetchLoading] = useState(false);
+  const [fetchError, setFetchError] = useState("");
+  const [activeFilter, setActiveFilter] = useState("すべて");
+
   const [selectedSnsCategories, setSelectedSnsCategories] = useState([SNS_CATEGORIES[0]]);
   const [selectedHashtags, setSelectedHashtags] = useState([]);
+  const [snsDays, setSnsDays] = useState("30");
   const [snsPosts, setSnsPosts] = useState([]);
+  const [selectedPost, setSelectedPost] = useState(null);
   const [snsLoading, setSnsLoading] = useState(false);
   const [snsError, setSnsError] = useState("");
-  const [snsFilter, setSnsFilter] = useState("すべて");
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [snsDays, setSnsDays] = useState("30");
 
-  // 自動承認モード（localStorageに保存）
-  const [autoApprove, setAutoApprove] = useState(() => localStorage.getItem("ai_auto_approve") === "true");
-  function toggleAutoApprove() {
-    const next = !autoApprove;
-    setAutoApprove(next);
-    localStorage.setItem("ai_auto_approve", String(next));
-  }
-
-  // 生成
+  const [customNews, setCustomNews] = useState("");
   const [generated, setGenerated] = useState(null);
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -249,6 +276,27 @@ export default function App() {
   const [approved, setApproved] = useState(false);
   const [queue, setQueue] = useState([]);
   const [copiedId, setCopiedId] = useState(null);
+  const [autoApprove, setAutoApprove] = useState(() => localStorage.getItem("ai_auto_approve") === "true");
+
+  const currentPersona = PERSONAS.find(p => p.id === selectedPersonaId) || PERSONAS[0];
+  const activePrompt = customPersona !== null ? customPersona : currentPersona.prompt;
+  const charCount = (editMode ? editedText : generated)?.length || 0;
+  const charOver = charCount > 140;
+  const canGenerate = !loading && !!apiKey && (activeTab === "search" ? !!selectedNews : activeTab === "sns" ? !!selectedPost : customNews.trim().length > 0);
+
+  function saveApiKey(key) {
+    setApiKey(key.trim());
+    localStorage.setItem("ai_post_studio_openai_key", key.trim());
+    localStorage.removeItem("ai_post_studio_key");
+    setShowApiSetup(false);
+  }
+
+  function removeApiKey() {
+    setApiKey("");
+    setApiKeyInput("");
+    localStorage.removeItem("ai_post_studio_openai_key");
+    setShowApiSetup(true);
+  }
 
   function copyWithFeedback(id, text) {
     navigator.clipboard.writeText(text);
@@ -256,86 +304,22 @@ export default function App() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
-  const currentPersona = PERSONAS.find(p => p.id === selectedPersonaId);
-  const activePrompt = customPersona !== null ? customPersona : currentPersona.prompt;
-  const charCount = (editMode ? editedText : generated)?.length || 0;
-  const charOver = charCount > 140;
-  const canGenerate = !loading && !!apiKey && (activeTab === "search" ? !!selectedNews : activeTab === "sns" ? !!selectedPost : customNews.trim().length > 0);
+  function toggleAutoApprove() {
+    const next = !autoApprove;
+    setAutoApprove(next);
+    localStorage.setItem("ai_auto_approve", String(next));
+  }
 
-  async function fetchNews() {
-    if (!apiKey) { setFetchError("APIキーを設定してください"); return; }
-
-    // キャッシュチェック
-    const cacheKey = getCacheKey("news", selectedCategories.map(c => c.id).join("-"), dateRange);
-    const cached = getCache(cacheKey);
-    if (cached) {
-      setFetchedNews(cached);
-      setFetchError(""); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて"); setApproved(false);
-      return;
-    }
-
-    setFetchLoading(true); setFetchError(""); setFetchedNews([]); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて"); setApproved(false);
-    try {
-      const today = new Date();
-      const since = new Date(today - dateRange * 24 * 60 * 60 * 1000);
-      const fmt = d => d.toISOString().slice(0, 10);
-
-      const data = await callAPI(apiKey, {
-        max_tokens: 4000,
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
-        messages: [{
-          role: "user",
-          content: `今日は${fmt(today)}です。${selectedCategories.map(c => c.query).join(" OR ")} に関して${fmt(since)}以降のニュースを検索してください。各記事のHTMLメタデータ（og:article:published_time・datePublished・pubdate）から正確な公開日を取得してください。最大5件・JSONのみ・必ず]で終わること。
-
-[{"t":"30字タイトル","s":"40字要約","src":"媒体","u":"URL","d":"YYYY-MM-DD形式の公開日"}]`
-        }]
-      }, MODEL_SEARCH);
-
-      if (data.error) throw new Error(data.error.message);
-      const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
-
-      let items = null;
-      // パターン1: ```json...```
-      const m = allText.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (m) {
-        try { items = JSON.parse(m[1].trim()); } catch {}
-      }
-      // パターン2: [...] を抽出
-      if (!items) {
-        const s = allText.indexOf("["), e = allText.lastIndexOf("]");
-        if (s !== -1 && e !== -1) {
-          try { items = JSON.parse(allText.slice(s, e + 1)); } catch {}
-        }
-      }
-      // パターン3: 不完全なJSONを救済
-      if (!items) {
-        const s = allText.indexOf("[");
-        if (s !== -1) {
-          const partial = allText.slice(s);
-          const fixed = partial.replace(/,?\s*\{[^}]*$/, "]").replace(/,\s*$/, "]");
-          try { items = JSON.parse(fixed); } catch {}
-        }
-      }
-      // 短縮フィールドを正規化
-      if (items?.length) {
-        items = items.map(item => ({
-          title: item.title || item.t || "",
-          summary: item.summary || item.s || "",
-          source: item.source || item.src || "",
-          url: item.url || item.u || "",
-          tags: item.tags || [],
-          date: item.date || item.d || "",
-        })).filter(item => item.title);
-      }
-
-      if (!items) items = [];
-      const filtered = filterByDate(items, Number(dateRange));
-      setCache(cacheKey, filtered);
-      setFetchedNews(filtered);
-    } catch (e) {
-      setFetchError(analyzeError(e, selectedCategories.length > 1 ? "multi" : "single"));
-    }
-    finally { setFetchLoading(false); }
+  function toggleCategory(cat) {
+    setSelectedCategories(prev => {
+      const exists = prev.find(c => c.id === cat.id);
+      if (exists) return prev.length === 1 ? prev : prev.filter(c => c.id !== cat.id);
+      return [...prev, cat];
+    });
+    setFetchedNews([]);
+    setSelectedNews(null);
+    setGenerated(null);
+    setActiveFilter("すべて");
   }
 
   function toggleSnsCategory(cat) {
@@ -344,220 +328,171 @@ export default function App() {
       if (exists) return prev.length === 1 ? prev : prev.filter(c => c.id !== cat.id);
       return [...prev, cat];
     });
-    setSnsPosts([]); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて"); setSelectedHashtags([]);
+    setSelectedHashtags([]);
+    setSnsPosts([]);
+    setSelectedPost(null);
+    setGenerated(null);
   }
 
-  async function fetchSnsPosts() {
-    if (!apiKey) { setSnsError("APIキーを設定してください"); return; }
-
-    // キャッシュチェック
-    const snsCacheKey = getCacheKey("sns", selectedSnsCategories.map(c => c.id).join("-") + selectedHashtags.join(""), snsDays);
-    const snsCached = getCache(snsCacheKey);
-    if (snsCached) {
-      setSnsPosts(snsCached);
-      setSnsError(""); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて");
+  async function fetchNews() {
+    if (!apiKey) { setFetchError("OpenAI APIキーを設定してください"); return; }
+    const cacheKey = getCacheKey("news", selectedCategories.map(c => c.id).join("-"), dateRange);
+    const cached = getCache(cacheKey);
+    if (cached) {
+      setFetchedNews(cached);
+      setFetchError("");
+      setSelectedNews(null);
+      setGenerated(null);
       return;
     }
 
-    setSnsLoading(true); setSnsError(""); setSnsPosts([]); setSelectedPost(null); setGenerated(null); setSnsFilter("すべて");
+    setFetchLoading(true);
+    setFetchError("");
+    setFetchedNews([]);
+    setSelectedNews(null);
+    setGenerated(null);
     try {
-      const tags = selectedHashtags.length > 0
-        ? selectedHashtags
-        : selectedSnsCategories.flatMap(c => c.hashtags.slice(0, 2));
-      const data = await callAPI(apiKey, {
-        max_tokens: 4000,
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
-        messages: [{
-          role: "user",
-          content: (() => {
-            const today = new Date();
-            const since = new Date(today - snsDays * 24 * 60 * 60 * 1000);
-            const fmt = d => d.toISOString().slice(0, 10);
-            return `今日は${fmt(today)}です。${tags.slice(0, 4).join(" ")} に関して${fmt(since)}以降のSNSトレンドを検索し、以下のJSON配列を返してください。必ず5件・各フィールドは短く・JSONのみ・]で必ず終わること。
+      const today = new Date();
+      const since = new Date(today - Number(dateRange) * 24 * 60 * 60 * 1000);
+      const fmt = d => d.toISOString().slice(0, 10);
+      const text = await callOpenAI(apiKey, {
+        model: MODEL_SEARCH,
+        useSearch: true,
+        max_output_tokens: 2500,
+        instructions: "あなたはニュース検索アシスタントです。回答はJSON配列のみ。説明文やMarkdownは禁止。",
+        input: `今日は${fmt(today)}です。${selectedCategories.map(c => c.query).join(" OR ")} に関して${fmt(since)}以降のニュースを検索してください。各記事のHTMLメタデータから正確な公開日を取得してください。最大5件。\n\n[{"t":"30字タイトル","s":"40字要約","src":"媒体","u":"URL","d":"YYYY-MM-DD形式の公開日","tags":["タグ"]}]`,
+      });
+      const items = filterByDate(normalizeNews(extractJsonArray(text)), Number(dateRange));
+      setCache(cacheKey, items);
+      setFetchedNews(items);
+    } catch (error) {
+      setFetchError(analyzeError(error, selectedCategories.length > 1 ? "multi" : "single"));
+    } finally {
+      setFetchLoading(false);
+    }
+  }
 
-[{"t":"30字タイトル","s":"40字要約","src":"情報源","u":"URL","tags":["タグ"],"r":"ポジティブ"}]`;
-          })()
-        }]
-      }, MODEL_SEARCH);
-      if (data.error) throw new Error(data.error.message);
-      const allText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
-      if (!allText) throw new Error("レスポンスが空です");
-      let items = null;
-      try {
-        const m = allText.match(/```(?:json)?\s*([\s\S]*?)```/);
-        if (m) { items = JSON.parse(m[1].trim()); }
-        else {
-          const s = allText.indexOf("["), e = allText.lastIndexOf("]");
-          if (s !== -1 && e !== -1) items = JSON.parse(allText.slice(s, e + 1));
-        }
-      } catch {
-        const s = allText.indexOf("[");
-        if (s !== -1) {
-          const partial = allText.slice(s);
-          const fixed = partial.replace(/,?\s*\{[^}]*$/, "]").replace(/,\s*$/, "]");
-          try { items = JSON.parse(fixed); } catch {}
-        }
-      }
-      // 短縮フィールドを正規化
-      if (items?.length) {
-        items = items.map(item => ({
-          title: item.title || item.t || "",
-          summary: item.summary || item.s || "",
-          source: item.source || item.src || "",
-          url: item.url || item.u || "",
-          tags: item.tags || [],
-          reaction: item.reaction || item.r || "",
-        })).filter(item => item.title);
-      }
-      if (!items?.length) throw new Error("記事が取得できませんでした");
-      setCache(snsCacheKey, items);
+  async function fetchSnsPosts() {
+    if (!apiKey) { setSnsError("OpenAI APIキーを設定してください"); return; }
+    const cacheKey = getCacheKey("sns", selectedSnsCategories.map(c => c.id).join("-") + selectedHashtags.join(""), snsDays);
+    const cached = getCache(cacheKey);
+    if (cached) {
+      setSnsPosts(cached);
+      setSnsError("");
+      setSelectedPost(null);
+      setGenerated(null);
+      return;
+    }
+
+    setSnsLoading(true);
+    setSnsError("");
+    setSnsPosts([]);
+    setSelectedPost(null);
+    setGenerated(null);
+    try {
+      const tags = selectedHashtags.length > 0 ? selectedHashtags : selectedSnsCategories.flatMap(c => c.hashtags.slice(0, 2));
+      const today = new Date();
+      const since = new Date(today - Number(snsDays) * 24 * 60 * 60 * 1000);
+      const fmt = d => d.toISOString().slice(0, 10);
+      const text = await callOpenAI(apiKey, {
+        model: MODEL_SEARCH,
+        useSearch: true,
+        max_output_tokens: 2500,
+        instructions: "あなたはSNSトレンド検索アシスタントです。回答はJSON配列のみ。説明文やMarkdownは禁止。",
+        input: `今日は${fmt(today)}です。${tags.slice(0, 4).join(" ")} に関して${fmt(since)}以降のSNSトレンドを検索し、話題化しているテーマを5件返してください。\n\n[{"t":"30字タイトル","s":"40字要約","src":"情報源","u":"URL","tags":["タグ"],"r":"ポジティブ/ネガティブ/中立"}]`,
+      });
+      const items = normalizeNews(extractJsonArray(text));
+      if (!items.length) throw new Error("記事が取得できませんでした");
+      setCache(cacheKey, items);
       setSnsPosts(items);
-    } catch (e) { setSnsError(analyzeError(e, selectedSnsCategories.length > 1 ? "multi" : "single")); }
-    finally { setSnsLoading(false); }
+    } catch (error) {
+      setSnsError(analyzeError(error, selectedSnsCategories.length > 1 ? "multi" : "single"));
+    } finally {
+      setSnsLoading(false);
+    }
   }
 
   async function generateComment() {
-    setLoading(true); setGenerated(null); setApproved(false); setEditMode(false);
+    setLoading(true);
+    setGenerated(null);
+    setApproved(false);
+    setEditMode(false);
     const newsText = activeTab === "custom"
       ? customNews
       : activeTab === "sns"
-      ? `話題のポスト: ${selectedPost.title}\n内容: ${selectedPost.summary}\n反応: ${selectedPost.reaction || ""}`
-      : `タイトル: ${selectedNews.title}\n概要: ${selectedNews.summary}`;
+        ? `話題のポスト: ${selectedPost.title}\n内容: ${selectedPost.summary}\n反応: ${selectedPost.reaction || ""}`
+        : `タイトル: ${selectedNews.title}\n概要: ${selectedNews.summary}`;
+
     try {
-      const data = await callAPI(apiKey, {
-        max_tokens: 1000,
-        system: activePrompt,
-        messages: [{ role: "user", content: `以下のAIニュースについてXに投稿するコメントを1つ生成してください。140文字以内、ハッシュタグ1〜2個まで。投稿文だけ返してください。\n\n${newsText}` }]
-      }, MODEL_GEN);
-      if (data.error) throw new Error(data.error.message);
-      const text = data.content?.[0]?.text || "生成失敗";
-      setGenerated(text);
-      setEditedText(text);
-      // 自動承認モードの場合はそのままキューに追加
-      if (autoApprove && text !== "生成失敗") {
-        const title = activeTab === "search" ? selectedNews?.title
-          : activeTab === "sns" ? selectedPost?.title
-          : customNews.slice(0, 30) + "…";
-        const url = activeTab === "search" ? selectedNews?.url
-          : activeTab === "sns" ? selectedPost?.url
-          : null;
-        const source = activeTab === "search" ? selectedNews?.source
-          : activeTab === "sns" ? selectedPost?.source
-          : null;
-        const p = PERSONAS.find(p => p.id === selectedPersonaId);
-        setQueue(q => [...q, { id: Date.now(), text, newsTitle: title, url, source, persona: p.name, personaEmoji: p.emoji }]);
-        setApproved(true);
-      }
-    } catch (e) { setGenerated(analyzeError(e, "single")); }
-    finally { setLoading(false); }
+      const text = await callOpenAI(apiKey, {
+        model: MODEL_GEN,
+        max_output_tokens: 600,
+        instructions: activePrompt,
+        input: `以下のAIニュースについてXに投稿するコメントを1つ生成してください。140文字以内、ハッシュタグ1〜2個まで。投稿文だけ返してください。\n\n${newsText}`,
+      });
+      const cleanText = text.trim() || "生成失敗";
+      setGenerated(cleanText);
+      setEditedText(cleanText);
+      if (autoApprove && cleanText !== "生成失敗") addToQueue(cleanText);
+    } catch (error) {
+      setGenerated(analyzeError(error, "single"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function addToQueue(text) {
+    const title = activeTab === "search" ? selectedNews?.title : activeTab === "sns" ? selectedPost?.title : customNews.slice(0, 30) + "…";
+    const url = activeTab === "search" ? selectedNews?.url : activeTab === "sns" ? selectedPost?.url : null;
+    const source = activeTab === "search" ? selectedNews?.source : activeTab === "sns" ? selectedPost?.source : null;
+    setQueue(q => [...q, { id: Date.now(), text, newsTitle: title, url, source, persona: currentPersona.name, personaEmoji: currentPersona.emoji }]);
+    setApproved(true);
   }
 
   function approvePost() {
-    const text = editMode ? editedText : generated;
-    const title = activeTab === "search" ? selectedNews?.title
-      : activeTab === "sns" ? selectedPost?.title
-      : customNews.slice(0, 30) + "…";
-    const url = activeTab === "search" ? selectedNews?.url
-      : activeTab === "sns" ? selectedPost?.url
-      : null;
-    const source = activeTab === "search" ? selectedNews?.source
-      : activeTab === "sns" ? selectedPost?.source
-      : null;
-    setQueue(q => [...q, { id: Date.now(), text, newsTitle: title, url, source, persona: currentPersona.name, personaEmoji: currentPersona.emoji }]);
-    setApproved(true); setEditMode(false);
+    addToQueue(editMode ? editedText : generated);
+    setEditMode(false);
   }
 
   const filteredNews = activeFilter === "すべて"
     ? fetchedNews
     : fetchedNews.filter(n => (n.title + n.summary + (n.tags || []).join(" ")).includes(activeFilter));
 
-  function toggleCategory(cat) {
-    setSelectedCategories(prev => {
-      const exists = prev.find(c => c.id === cat.id);
-      if (exists) {
-        return prev.length === 1 ? prev : prev.filter(c => c.id !== cat.id);
-      }
-      return [...prev, cat];
-    });
-    setFetchedNews([]); setSelectedNews(null); setGenerated(null); setActiveFilter("すべて");
-  }
+  const commonButton = {
+    border: "none",
+    borderRadius: 10,
+    padding: "12px 18px",
+    fontFamily: "inherit",
+    cursor: "pointer",
+    fontWeight: 600,
+  };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#08080f", color: "#e2e2f0", fontFamily: "'DM Sans','Noto Sans JP',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#08080f", color: "#e2e2f0", fontFamily: "'Noto Sans JP', system-ui, sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500&display=swap');
-        *{box-sizing:border-box;margin:0;padding:0}
-        .cursor{animation:blink .8s step-end infinite}
-        @keyframes blink{50%{opacity:0}}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-        .fade-in{animation:fadeIn .25s ease}
-        .slide-in{animation:slideIn .3s ease}
-        .persona-card{border-radius:12px;padding:13px 14px;cursor:pointer;transition:all .2s;border:2px solid transparent;background:#11111a}
-        .persona-card:hover{transform:translateY(-2px)}
-        .persona-card.active{border-color:var(--accent);background:#14141f}
-        .source-btn{background:#11111a;border:1px solid #1c1c2e;border-radius:8px;padding:8px 12px;font-size:12px;font-family:inherit;color:#666;cursor:pointer;transition:all .2s}
-        .source-btn:hover{border-color:#2a2a4a;color:#aaa}
-        .source-btn.active{border-color:#3a5a8a;color:#7eb8f7;background:#0f1825}
-        .news-card{background:#11111a;border:1px solid #1c1c2e;border-radius:10px;padding:13px 16px;cursor:pointer;transition:all .2s}
-        .news-card:hover{border-color:#2a2a4a;background:#14141f;transform:translateY(-1px)}
-        .news-card.selected{border-color:#3a5a8a;background:#0f1825}
-        .btn-primary{color:white;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;font-weight:500;width:100%}
-        .btn-primary:disabled{opacity:.35;cursor:not-allowed}
-        .btn-ghost{background:none;border:1px solid #252535;color:#777;border-radius:8px;padding:7px 14px;font-size:12px;font-family:inherit;cursor:pointer;transition:all .2s}
-        .btn-ghost:hover{border-color:#3a3a5a;color:#bbb}
-        .btn-fetch{background:#0f1825;border:1px solid #1a3a5a;color:#7eb8f7;border-radius:8px;padding:10px 20px;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;width:100%}
-        .btn-fetch:hover:not(:disabled){background:#111f35}
-        .btn-fetch:disabled{opacity:.4;cursor:not-allowed}
-        .btn-approve{background:#064e3b;color:#6ee7b7;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500}
-        .btn-approve:hover{background:#047857}
-        .output-box{background:#0c0c18;border:1px solid #1c1c2e;border-radius:12px;padding:18px;min-height:80px;line-height:1.8;font-size:14px}
-        textarea{background:#0c0c18;border:1px solid #252540;border-radius:10px;color:#e2e2f0;font-family:inherit;font-size:13px;line-height:1.7;padding:13px;resize:vertical;width:100%;outline:none}
-        textarea:focus{border-color:#3a5a8a}
-        .tab-btn{background:none;border:none;cursor:pointer;padding:8px 16px;font-size:13px;font-family:inherit;transition:all .2s;border-bottom:2px solid transparent}
-        .tab-active{color:#7eb8f7;border-bottom-color:#7eb8f7}
-        .tab-inactive{color:#444}
-        .tab-inactive:hover{color:#777}
-        .label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#333355;font-weight:600;margin-bottom:9px}
-        .approved-badge{display:inline-flex;align-items:center;gap:6px;background:#064e3b;color:#34d399;border-radius:20px;padding:4px 13px;font-size:12px;font-weight:500}
-        .queue-item{background:#0d0d1a;border:1px solid #1a1a30;border-radius:10px;padding:13px 16px}
-        .loading-spin{display:inline-block;width:12px;height:12px;border:2px solid #3a5a8a;border-top-color:#7eb8f7;border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;vertical-align:middle}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        .loading-dots::after{content:'';animation:dots 1.2s steps(4,end) infinite}
-        @keyframes dots{0%,100%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
-        .filter-tag{background:#11111a;border:1px solid #1c1c2e;border-radius:20px;padding:5px 14px;font-size:12px;font-family:inherit;color:#555;cursor:pointer;transition:all .2s}
-        .filter-tag:hover{border-color:#2a2a4a;color:#aaa}
-        .filter-tag.active{background:#1a3a5a;border-color:#3a6a9a;color:#7eb8f7}
-        .divider{border:none;border-top:1px solid #141420;margin:20px 0}
-        ::-webkit-scrollbar{width:3px}
-        ::-webkit-scrollbar-thumb{background:#2a2a4a;border-radius:2px}
-        input[type=password]{background:#0a0800;border:1px solid #3a2a00;border-radius:8px;color:#e2d0a0;font-family:monospace;font-size:13px;padding:8px 12px;outline:none;flex:1}
+        *{box-sizing:border-box} body{margin:0}.cursor{animation:blink .8s step-end infinite}@keyframes blink{50%{opacity:0}}
+        input,textarea{background:#0c0c18;border:1px solid #252540;border-radius:10px;color:#e2e2f0;font-family:inherit;padding:12px;outline:none;width:100%}
+        textarea{resize:vertical;line-height:1.7}.label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#3a3a5a;font-weight:700;margin:0 0 9px}
+        .card{background:#11111a;border:1px solid #1c1c2e;border-radius:12px;padding:14px;cursor:pointer;transition:.2s}.card:hover{border-color:#2a2a4a;background:#14141f}.selected{border-color:#3a5a8a;background:#0f1825}
+        .ghost{background:none;border:1px solid #252535;color:#777;border-radius:8px;padding:7px 12px;font-size:12px;font-family:inherit;cursor:pointer}.ghost:hover{border-color:#3a3a5a;color:#bbb}
+        .tag{background:#11111a;border:1px solid #1c1c2e;border-radius:20px;padding:5px 12px;font-size:12px;color:#666;cursor:pointer}.tag.active{background:#1a3a5a;border-color:#3a6a9a;color:#7eb8f7}
       `}</style>
 
-      {/* API Key Banner */}
       {showApiSetup && (
-        <div style={{ background: apiKey ? "#061a0f" : "#0f0a00", borderBottom: `1px solid ${apiKey ? "#1a4a2a" : "#3a2a00"}`, padding: "12px 0" }}>
-          <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 20px" }}>
+        <div style={{ background: apiKey ? "#061a0f" : "#0f0a00", borderBottom: `1px solid ${apiKey ? "#1a4a2a" : "#3a2a00"}`, padding: 12 }}>
+          <div style={{ maxWidth: 960, margin: "0 auto" }}>
             {apiKey ? (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 13, color: "#34d399" }}>✓ APIキー設定済み（デバイスに保存済み）</span>
-                <button className="btn-ghost" style={{ fontSize: 10 }} onClick={removeApiKey}>削除</button>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#34d399", fontSize: 13 }}>✓ OpenAI APIキー設定済み（このデバイスに保存済み）</span>
+                <button className="ghost" onClick={removeApiKey}>削除</button>
               </div>
             ) : (
               <div>
-                <p style={{ fontSize: 12, color: "#a16207", marginBottom: 10 }}>
-                  ⚠ Anthropic APIキーを設定してください。このデバイスに保存され、次回から自動入力されます。
-                </p>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input type="password" placeholder="sk-ant-api03-..." value={apiKeyInput}
-                    onChange={e => setApiKeyInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter" && apiKeyInput.startsWith("sk-ant-")) saveApiKey(apiKeyInput); }} />
-                  <button onClick={() => saveApiKey(apiKeyInput)} disabled={!apiKeyInput.startsWith("sk-ant-")}
-                    style={{ background: "#78350f", color: "#fbbf24", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontFamily: "inherit", cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap", opacity: apiKeyInput.startsWith("sk-ant-") ? 1 : 0.4 }}>
-                    保存する
-                  </button>
-                  <a href="https://console.anthropic.com" target="_blank" rel="noreferrer"
-                    style={{ fontSize: 11, color: "#6a5a00", textDecoration: "none", whiteSpace: "nowrap" }}>取得 →</a>
+                <p style={{ color: "#a16207", fontSize: 12, marginTop: 0 }}>⚠ OpenAI APIキーを設定してください。このデバイスに保存されます。Vercel環境変数 OPENAI_API_KEY を使う場合も、入力欄に同じキーを入れると動作確認しやすいです。</p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input type="password" placeholder="sk-..." value={apiKeyInput} onChange={e => setApiKeyInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && apiKeyInput.startsWith("sk-")) saveApiKey(apiKeyInput); }} />
+                  <button onClick={() => saveApiKey(apiKeyInput)} disabled={!apiKeyInput.startsWith("sk-")} style={{ ...commonButton, background: "#1d4ed8", color: "white", opacity: apiKeyInput.startsWith("sk-") ? 1 : 0.4 }}>保存</button>
+                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" style={{ color: "#7eb8f7", fontSize: 12, alignSelf: "center", whiteSpace: "nowrap" }}>取得 →</a>
                 </div>
               </div>
             )}
@@ -565,467 +500,83 @@ export default function App() {
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ borderBottom: "1px solid #141420", padding: "15px 0" }}>
-        <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <header style={{ borderBottom: "1px solid #141420", padding: "15px 20px" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 9, background: `linear-gradient(135deg, ${currentPersona.color}, #7c3aed)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>{currentPersona.emoji}</div>
-            <div>
-              <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.02em" }}>AI Post Studio</span>
-              <span style={{ fontSize: 11, color: "#3a3a6a", marginLeft: 8 }}>/ {currentPersona.name}</span>
-            </div>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg, ${currentPersona.color}, #7c3aed)`, display: "grid", placeItems: "center" }}>{currentPersona.emoji}</div>
+            <div><strong>AI Post Studio</strong><span style={{ color: "#3a3a6a", marginLeft: 8, fontSize: 12 }}>/ OpenAI API版 / {currentPersona.name}</span></div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {queue.length > 0 && <span style={{ fontSize: 11, color: "#34d399", background: "#064e3b", borderRadius: 12, padding: "3px 10px" }}>承認済み {queue.length}件</span>}
-            <button className="btn-ghost" style={{ fontSize: 11 }} onClick={() => setShowApiSetup(!showApiSetup)}>
-              {apiKey ? "🔑" : "⚠ APIキー未設定"}
-            </button>
-            <button className="btn-ghost" style={{ fontSize: 11 }} onClick={() => setShowPersona(!showPersona)}>
-              {showPersona ? "閉じる" : "🧠 プロンプト"}
-            </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {queue.length > 0 && <span style={{ fontSize: 12, color: "#34d399", background: "#064e3b", borderRadius: 12, padding: "5px 10px" }}>承認済み {queue.length}件</span>}
+            <button className="ghost" onClick={() => setShowApiSetup(!showApiSetup)}>{apiKey ? "🔑" : "⚠ APIキー未設定"}</button>
+            <button className="ghost" onClick={() => setShowPersona(!showPersona)}>{showPersona ? "閉じる" : "🧠 プロンプト"}</button>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div style={{ maxWidth: 820, margin: "0 auto", padding: "24px 20px", display: "grid", gridTemplateColumns: queue.length > 0 ? "1fr 280px" : "1fr", gap: 24 }}>
-        <div>
-          {/* Persona Selector */}
-          <div style={{ marginBottom: 22 }}>
-            <p className="label">人格を選択</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 8 }}>
-              {PERSONAS.map(p => (
-                <div key={p.id} className={`persona-card ${selectedPersonaId === p.id ? "active" : ""}`}
-                  style={{ "--accent": p.accent }}
-                  onClick={() => { setSelectedPersonaId(p.id); setCustomPersona(null); setGenerated(null); setApproved(false); }}>
-                  <div style={{ fontSize: 18, marginBottom: 5 }}>{p.emoji}</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2, color: selectedPersonaId === p.id ? p.accent : "#aaa" }}>{p.name}</div>
-                  <div style={{ fontSize: 10, color: "#3a3a5a", lineHeight: 1.3 }}>{p.description}</div>
-                </div>
-              ))}
-            </div>
+      <main style={{ maxWidth: 960, margin: "0 auto", padding: 24, display: "grid", gridTemplateColumns: queue.length > 0 ? "1fr 300px" : "1fr", gap: 24 }}>
+        <section>
+          <p className="label">人格を選択</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 8, marginBottom: 20 }}>
+            {PERSONAS.map(p => (
+              <button key={p.id} className="card" onClick={() => { setSelectedPersonaId(p.id); setCustomPersona(null); setGenerated(null); }} style={{ textAlign: "left", borderColor: selectedPersonaId === p.id ? p.accent : undefined }}>
+                <div style={{ fontSize: 18 }}>{p.emoji}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: selectedPersonaId === p.id ? p.accent : "#aaa" }}>{p.name}</div>
+                <div style={{ fontSize: 10, color: "#4a4a6a" }}>{p.description}</div>
+              </button>
+            ))}
           </div>
 
-          {/* Persona Editor */}
-          {showPersona && (
-            <div style={{ marginBottom: 20 }} className="fade-in">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <p className="label">人格プロンプト（編集可能）</p>
-                {customPersona !== null && <button className="btn-ghost" style={{ fontSize: 10 }} onClick={() => setCustomPersona(null)}>リセット</button>}
-              </div>
-              <textarea value={activePrompt} onChange={e => setCustomPersona(e.target.value)} rows={8}
-                style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: currentPersona.accent, lineHeight: 1.9 }} />
-            </div>
-          )}
+          {showPersona && <div style={{ marginBottom: 20 }}><p className="label">人格プロンプト（編集可能）</p><textarea rows={8} value={activePrompt} onChange={e => setCustomPersona(e.target.value)} /></div>}
 
-          <hr className="divider" />
-
-          {/* Tabs */}
-          <div style={{ borderBottom: "1px solid #141420", marginBottom: 18, display: "flex" }}>
-            <button className={`tab-btn ${activeTab === "search" ? "tab-active" : "tab-inactive"}`} onClick={() => setActiveTab("search")}>🔍 ニュース検索</button>
-            <button className={`tab-btn ${activeTab === "sns" ? "tab-active" : "tab-inactive"}`} onClick={() => setActiveTab("sns")}>𝕏 SNSトレンド</button>
-            <button className={`tab-btn ${activeTab === "custom" ? "tab-active" : "tab-inactive"}`} onClick={() => setActiveTab("custom")}>✏️ 自由入力</button>
+          <div style={{ borderBottom: "1px solid #141420", marginBottom: 18 }}>
+            {[{ id: "search", label: "🔍 ニュース検索" }, { id: "sns", label: "𝕏 SNSトレンド" }, { id: "custom", label: "✏️ 自由入力" }].map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ background: "none", border: "none", borderBottom: activeTab === tab.id ? "2px solid #7eb8f7" : "2px solid transparent", color: activeTab === tab.id ? "#7eb8f7" : "#555", padding: "10px 16px", cursor: "pointer" }}>{tab.label}</button>
+            ))}
           </div>
 
-          {/* Search Tab */}
           {activeTab === "search" && (
-            <div className="fade-in">
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <p className="label" style={{ margin: 0, whiteSpace: "nowrap" }}>期間</p>
-                {[
-                  { label: "24時間", value: "1" },
-                  { label: "3日", value: "3" },
-                  { label: "1週間", value: "7" },
-                  { label: "2週間", value: "14" },
-                  { label: "1ヶ月", value: "30" },
-                ].map(d => (
-                  <button key={d.value}
-                    className={`filter-tag ${dateRange === d.value ? "active" : ""}`}
-                    onClick={() => { setDateRange(d.value); setFetchedNews([]); setSelectedNews(null); setGenerated(null); }}>
-                    {d.label}
-                  </button>
-                ))}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
-                <p className="label" style={{ margin: 0 }}>カテゴリを選択（複数可）</p>
-                {selectedCategories.length > 1 && (
-                  <button onClick={() => { setSelectedCategories([NEWS_CATEGORIES[0]]); setFetchedNews([]); setSelectedNews(null); }}
-                    style={{ background: "none", border: "1px solid #2a2a4a", color: "#5a5a8a", borderRadius: 4, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>
-                    リセット
-                  </button>
-                )}
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
-                {NEWS_CATEGORIES.map(c => {
-                  const isSelected = selectedCategories.find(s => s.id === c.id);
-                  return (
-                    <button key={c.id}
-                      style={{
-                        flex: "1 1 calc(50% - 4px)", textAlign: "left",
-                        background: isSelected ? "#0f1825" : "#11111a",
-                        border: `1px solid ${isSelected ? "#3a5a8a" : "#1c1c2e"}`,
-                        color: isSelected ? "#7eb8f7" : "#666",
-                        borderRadius: 8, padding: "8px 12px", fontSize: 12,
-                        fontFamily: "inherit", cursor: "pointer", transition: "all .2s",
-                        position: "relative"
-                      }}
-                      onClick={() => toggleCategory(c)}>
-                      {isSelected && <span style={{ position: "absolute", top: 4, right: 6, fontSize: 9, color: "#7eb8f7" }}>✓</span>}
-                      {c.emoji} {c.name}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {getCache(getCacheKey("news", selectedCategories.map(c => c.id).join("-"), dateRange)) && (
-                <p style={{ fontSize: 10, color: "#3a5a3a", marginBottom: 8 }}>
-                  ✓ キャッシュ済み（3時間有効）<button onClick={() => { localStorage.removeItem(getCacheKey("news", selectedCategories.map(c => c.id).join("-"), dateRange)); setFetchedNews([]); }} style={{ background: "none", border: "none", color: "#5a3a3a", cursor: "pointer", fontSize: 10, marginLeft: 6, fontFamily: "inherit" }}>再取得</button>
-                </p>
-              )}
-              <button className="btn-fetch" disabled={fetchLoading || !apiKey} onClick={fetchNews} style={{ marginBottom: 16 }}>
-                {fetchLoading ? <><span className="loading-spin" />検索中（20〜30秒）...</> : `🔍 ${selectedCategories.length === 1 ? `「${selectedCategories[0].name}」` : `${selectedCategories.length}カテゴリ`}の最新ニュースを検索`}
-              </button>
-
-              {!apiKey && <p style={{ fontSize: 12, color: "#6a5a00", background: "#1a1400", border: "1px solid #3a3000", borderRadius: 8, padding: "10px 14px", marginBottom: 12 }}>⚠ APIキーを設定すると検索が使えます</p>}
-              {fetchError && <p style={{ fontSize: 12, color: "#f87171", background: "#1a0a0a", padding: "12px 14px", borderRadius: 8, marginBottom: 12, lineHeight: 1.7 }}>{fetchError}</p>}
-
-              {fetchedNews.length > 0 && (
-                <div className="slide-in">
-                  {selectedCategories.length === 1 && selectedCategories[0].filters?.length > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                      <p className="label">絞り込み</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {["すべて", ...selectedCategories[0].filters].map(f => (
-                          <button key={f} className={`filter-tag ${activeFilter === f ? "active" : ""}`}
-                            onClick={() => { setActiveFilter(f); setSelectedNews(null); setGenerated(null); }}>
-                            {f}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <p className="label">{filteredNews.length}件表示</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                    {fetchedNews.length === 0 ? (
-                      <div style={{ textAlign: "center", padding: "24px 0" }}>
-                        <p style={{ fontSize: 28, marginBottom: 8 }}>📭</p>
-                        <p style={{ color: "#7a7a9a", fontSize: 14, marginBottom: 6 }}>
-                          過去{dateRange}日以内の「{selectedCategories.map(c => c.name).join(" / ")}」の記事は見つかりませんでした
-                        </p>
-                        <p style={{ color: "#3a3a5a", fontSize: 12, lineHeight: 1.8 }}>
-                          期間を「3日」「1週間」に伸ばすか、<br/>別のカテゴリを試してみてください
-                        </p>
-                      </div>
-                    ) : filteredNews.length === 0 ? (
-                      <p style={{ color: "#3a3a5a", fontSize: 13, padding: "16px 0" }}>「{activeFilter}」に関する記事が見つかりませんでした</p>
-                    ) : filteredNews.map((news, i) => (
-                      <div key={i} className={`news-card ${selectedNews === news ? "selected" : ""}`}
-                        onClick={() => { setSelectedNews(news); setGenerated(null); setApproved(false); }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                          <div style={{ flex: 1 }}>
-                            <p style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.5, marginBottom: 4, color: selectedNews === news ? "#c8d8f0" : "#bbb" }}>{news.title}</p>
-                            {news.summary && <p style={{ fontSize: 11.5, color: "#445", lineHeight: 1.6 }}>{news.summary}</p>}
-                            <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
-                              {news.source && <span style={{ fontSize: 10, color: "#3a5a8a" }}>📰 {news.source}</span>}
-                              {news.date && <span style={{ fontSize: 10, color: "#3a5a3a" }}>📅 {news.date}</span>}
-                              {news.tags?.map(tag => (
-                                <span key={tag} onClick={e => { e.stopPropagation(); setActiveFilter(tag); setSelectedNews(null); }}
-                                  style={{ fontSize: 10, color: "#4a6a4a", background: "#0a140a", border: "1px solid #1a3a1a", borderRadius: 10, padding: "1px 8px", cursor: "pointer" }}>
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          {isValidUrl(news.url) && (
-                            <a href={news.url} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 10, color: "#3a5a8a", textDecoration: "none", whiteSpace: "nowrap", alignSelf: "flex-start" }}
-                              onClick={e => e.stopPropagation()}>🔗 元記事</a>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {fetchedNews.length === 0 && !fetchLoading && !fetchError && (
-                <div style={{ textAlign: "center", padding: "28px 0", color: "#2a2a4a", fontSize: 13 }}>
-                  カテゴリを選んで検索ボタンを押してください
-                </div>
-              )}
+            <div>
+              <p className="label">期間</p>
+              <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap" }}>{[{ label: "24時間", value: "1" }, { label: "3日", value: "3" }, { label: "1週間", value: "7" }, { label: "2週間", value: "14" }, { label: "1ヶ月", value: "30" }].map(d => <button key={d.value} className={`tag ${dateRange === d.value ? "active" : ""}`} onClick={() => { setDateRange(d.value); setFetchedNews([]); setSelectedNews(null); }}>{d.label}</button>)}</div>
+              <p className="label">カテゴリを選択（複数可）</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginBottom: 14 }}>{NEWS_CATEGORIES.map(c => <button key={c.id} className="card" onClick={() => toggleCategory(c)} style={{ textAlign: "left", borderColor: selectedCategories.find(s => s.id === c.id) ? "#3a5a8a" : undefined }}>{c.emoji} {c.name}</button>)}</div>
+              {getCache(getCacheKey("news", selectedCategories.map(c => c.id).join("-"), dateRange)) && <p style={{ color: "#4a9a4a", fontSize: 11 }}>✓ キャッシュ済み（3時間有効）</p>}
+              <button onClick={fetchNews} disabled={fetchLoading || !apiKey} style={{ ...commonButton, width: "100%", background: "#0f1825", color: "#7eb8f7", border: "1px solid #1a3a5a", opacity: fetchLoading || !apiKey ? 0.4 : 1 }}>{fetchLoading ? "検索中…" : `🔍 ${selectedCategories.length}カテゴリの最新ニュースを検索`}</button>
+              {fetchError && <p style={{ color: "#f87171", background: "#1a0a0a", padding: 12, borderRadius: 8 }}>{fetchError}</p>}
+              {fetchedNews.length > 0 && <div style={{ marginTop: 16 }}><p className="label">{filteredNews.length}件表示</p><div style={{ display: "grid", gap: 8 }}>{filteredNews.map((news, i) => <article key={i} className={`card ${selectedNews === news ? "selected" : ""}`} onClick={() => { setSelectedNews(news); setGenerated(null); setApproved(false); }}><strong style={{ fontSize: 13 }}>{news.title}</strong><p style={{ color: "#666", fontSize: 12 }}>{news.summary}</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 10, color: "#3a5a8a" }}>{news.source && <span>📰 {news.source}</span>}{news.date && <span>📅 {news.date}</span>}{isValidUrl(news.url) && <a href={news.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color: "#7eb8f7" }}>元記事</a>}</div></article>)}</div></div>}
             </div>
           )}
 
-          {/* SNS Tab */}
           {activeTab === "sns" && (
-            <div className="fade-in">
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-                <p className="label" style={{ margin: 0, whiteSpace: "nowrap" }}>期間</p>
-                {[{ label: "1週間", value: "7" }, { label: "2週間", value: "14" }, { label: "1ヶ月", value: "30" }].map(d => (
-                  <button key={d.value} className={`filter-tag ${snsDays === d.value ? "active" : ""}`}
-                    onClick={() => { setSnsDays(d.value); setSnsPosts([]); setSelectedPost(null); }}>
-                    {d.label}
-                  </button>
-                ))}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
-                <p className="label" style={{ margin: 0 }}>カテゴリを選択（複数可）</p>
-                {selectedSnsCategories.length > 1 && (
-                  <button onClick={() => { setSelectedSnsCategories([SNS_CATEGORIES[0]]); setSnsPosts([]); setSelectedPost(null); setSelectedHashtags([]); }}
-                    style={{ background: "none", border: "1px solid #2a2a4a", color: "#5a5a8a", borderRadius: 4, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>
-                    リセット
-                  </button>
-                )}
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
-                {SNS_CATEGORIES.map(c => {
-                  const isSelected = selectedSnsCategories.find(s => s.id === c.id);
-                  return (
-                    <button key={c.id}
-                      style={{
-                        flex: "1 1 calc(50% - 4px)", textAlign: "left",
-                        background: isSelected ? "#0f1825" : "#11111a",
-                        border: `1px solid ${isSelected ? "#3a5a8a" : "#1c1c2e"}`,
-                        color: isSelected ? "#7eb8f7" : "#666",
-                        borderRadius: 8, padding: "8px 12px", fontSize: 12,
-                        fontFamily: "inherit", cursor: "pointer", transition: "all .2s",
-                        position: "relative"
-                      }}
-                      onClick={() => toggleSnsCategory(c)}>
-                      {isSelected && <span style={{ position: "absolute", top: 4, right: 6, fontSize: 9, color: "#7eb8f7" }}>✓</span>}
-                      {c.emoji} {c.name}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="label">ハッシュタグで絞り込み（複数選択可・未選択で全タグ検索）</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-                {[...new Set(selectedSnsCategories.flatMap(c => c.hashtags))].map(tag => {
-                  const isSelected = selectedHashtags.includes(tag);
-                  return (
-                    <button key={tag}
-                      onClick={() => {
-                        setSelectedHashtags(prev => isSelected ? prev.filter(t => t !== tag) : [...prev, tag]);
-                        setSnsPosts([]); setSelectedPost(null);
-                      }}
-                      style={{
-                        background: isSelected ? "#1a3a5a" : "#11111a",
-                        border: `1px solid ${isSelected ? "#3a6a9a" : "#1c1c2e"}`,
-                        color: isSelected ? "#7eb8f7" : "#555",
-                        borderRadius: 20, padding: "5px 14px", fontSize: 12,
-                        fontFamily: "inherit", cursor: "pointer", transition: "all .2s"
-                      }}>
-                      {tag}
-                    </button>
-                  );
-                })}
-              </div>
-              {selectedHashtags.length > 0 && (
-                <div style={{ fontSize: 11, color: "#3a5a8a", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>検索: {selectedHashtags.join(" ")}</span>
-                  <button onClick={() => setSelectedHashtags([])}
-                    style={{ background: "none", border: "1px solid #3a2a2a", color: "#7a4a4a", cursor: "pointer", fontSize: 10, borderRadius: 4, padding: "2px 8px", fontFamily: "inherit" }}>
-                    クリア
-                  </button>
-                </div>
-              )}
-              <button className="btn-fetch" disabled={snsLoading || !apiKey} onClick={fetchSnsPosts} style={{ marginBottom: 16 }}>
-                {snsLoading
-                  ? <><span className="loading-spin" />検索中（20〜30秒）...</>
-                  : `𝕏 ${selectedSnsCategories.length === 1 ? selectedSnsCategories[0].name : selectedSnsCategories.length + "カテゴリ"} を検索`}
-              </button>
-              {snsError && <p style={{ fontSize: 12, color: "#f87171", background: "#1a0a0a", padding: "12px 14px", borderRadius: 8, marginBottom: 12, lineHeight: 1.7 }}>{snsError}</p>}
-              {snsPosts.length > 0 && (
-                <div className="slide-in">
-                  <p className="label">{snsPosts.length}件表示</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                    {snsPosts.map((post, i) => (
-                      <div key={i} className={`news-card ${selectedPost === post ? "selected" : ""}`}
-                        onClick={() => { setSelectedPost(post); setGenerated(null); setApproved(false); }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                              <p style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: selectedPost === post ? "#c8d8f0" : "#bbb" }}>{post.title}</p>
-                              {post.reaction && (
-                                <span style={{
-                                  fontSize: 10, borderRadius: 10, padding: "1px 8px", whiteSpace: "nowrap",
-                                  background: post.reaction === "ポジティブ" ? "#0a1a0a" : post.reaction === "ネガティブ" ? "#1a0a0a" : "#1a1400",
-                                  color: post.reaction === "ポジティブ" ? "#4a9a4a" : post.reaction === "ネガティブ" ? "#9a4a4a" : "#9a8a00",
-                                  border: `1px solid ${post.reaction === "ポジティブ" ? "#1a3a1a" : post.reaction === "ネガティブ" ? "#3a1a1a" : "#3a3000"}`
-                                }}>{post.reaction}</span>
-                              )}
-                            </div>
-                            {post.summary && <p style={{ fontSize: 11.5, color: "#445", lineHeight: 1.6 }}>{post.summary}</p>}
-                            <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                              {post.source && <span style={{ fontSize: 10, color: "#3a5a8a" }}>📰 {post.source}</span>}
-                              {post.tags?.map(tag => <span key={tag} style={{ fontSize: 10, color: "#4a6a4a", background: "#0a140a", border: "1px solid #1a3a1a", borderRadius: 10, padding: "1px 8px" }}>{tag}</span>)}
-                            </div>
-                          </div>
-                          {isValidUrl(post.url) && (
-                            <a href={post.url} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 10, color: "#3a5a8a", textDecoration: "none", whiteSpace: "nowrap", alignSelf: "flex-start" }}
-                              onClick={e => e.stopPropagation()}>🔗 元記事</a>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {snsPosts.length === 0 && !snsLoading && !snsError && (
-                <div style={{ textAlign: "center", padding: "28px 0", color: "#2a2a4a", fontSize: 13 }}>
-                  ハッシュタグを選んで検索ボタンを押してください
-                </div>
-              )}
+            <div>
+              <p className="label">期間</p>
+              <div style={{ display: "flex", gap: 7, marginBottom: 14 }}>{[{ label: "1週間", value: "7" }, { label: "2週間", value: "14" }, { label: "1ヶ月", value: "30" }].map(d => <button key={d.value} className={`tag ${snsDays === d.value ? "active" : ""}`} onClick={() => { setSnsDays(d.value); setSnsPosts([]); }}>{d.label}</button>)}</div>
+              <p className="label">カテゴリを選択（複数可）</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginBottom: 14 }}>{SNS_CATEGORIES.map(c => <button key={c.id} className="card" onClick={() => toggleSnsCategory(c)} style={{ textAlign: "left", borderColor: selectedSnsCategories.find(s => s.id === c.id) ? "#3a5a8a" : undefined }}>{c.emoji} {c.name}</button>)}</div>
+              <p className="label">ハッシュタグで絞り込み</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>{[...new Set(selectedSnsCategories.flatMap(c => c.hashtags))].map(tag => <button key={tag} className={`tag ${selectedHashtags.includes(tag) ? "active" : ""}`} onClick={() => { setSelectedHashtags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]); setSnsPosts([]); }}>{tag}</button>)}</div>
+              <button onClick={fetchSnsPosts} disabled={snsLoading || !apiKey} style={{ ...commonButton, width: "100%", background: "#0f1825", color: "#7eb8f7", border: "1px solid #1a3a5a", opacity: snsLoading || !apiKey ? 0.4 : 1 }}>{snsLoading ? "検索中…" : "𝕏 SNSトレンドを検索"}</button>
+              {snsError && <p style={{ color: "#f87171", background: "#1a0a0a", padding: 12, borderRadius: 8 }}>{snsError}</p>}
+              {snsPosts.length > 0 && <div style={{ marginTop: 16, display: "grid", gap: 8 }}>{snsPosts.map((post, i) => <article key={i} className={`card ${selectedPost === post ? "selected" : ""}`} onClick={() => { setSelectedPost(post); setGenerated(null); setApproved(false); }}><strong style={{ fontSize: 13 }}>{post.title}</strong><p style={{ color: "#666", fontSize: 12 }}>{post.summary}</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 10, color: "#3a5a8a" }}>{post.source && <span>📰 {post.source}</span>}{post.reaction && <span>{post.reaction}</span>}{isValidUrl(post.url) && <a href={post.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color: "#7eb8f7" }}>元記事</a>}</div></article>)}</div>}
             </div>
           )}
 
+          {activeTab === "custom" && <div><p className="label">ニュース・トピックを入力</p><textarea rows={4} placeholder="例：OpenAIが新しいモデルを発表。コーディング能力が大幅向上。" value={customNews} onChange={e => setCustomNews(e.target.value)} /></div>}
 
-          {/* Custom Tab */}
-          {activeTab === "custom" && (
-            <div className="fade-in">
-              <p className="label">ニュース・トピックを入力</p>
-              <textarea placeholder="例：Anthropicが新しいClaudeモデルを発表。コーディング能力が大幅向上。" value={customNews} onChange={e => setCustomNews(e.target.value)} rows={4} />
-            </div>
-          )}
+          <hr style={{ border: "none", borderTop: "1px solid #141420", margin: "22px 0" }} />
+          <button disabled={!canGenerate} onClick={generateComment} style={{ ...commonButton, width: "100%", color: "white", background: canGenerate ? `linear-gradient(135deg, ${currentPersona.color}, #4c1d95)` : "#111120", opacity: canGenerate ? 1 : 0.4 }}>{loading ? `${currentPersona.emoji} 生成中…` : `${currentPersona.emoji} ${currentPersona.name}として投稿を生成`}</button>
 
-          <hr className="divider" />
+          {(loading || generated) && <div style={{ marginTop: 18 }}><div style={{ display: "flex", justifyContent: "space-between" }}><p className="label">生成された投稿</p>{generated && !loading && <span style={{ color: charOver ? "#f87171" : "#3a5a8a", fontSize: 12 }}>{charCount} / 140</span>}</div>{loading ? <div className="card" style={{ cursor: "default", color: "#2a3a6a" }}>考えています…</div> : editMode ? <textarea rows={5} value={editedText} onChange={e => setEditedText(e.target.value)} /> : <div className="card" style={{ cursor: "default", borderColor: `${currentPersona.color}55`, lineHeight: 1.8 }}><TypewriterText text={generated} /></div>} {generated && !loading && <div style={{ display: "flex", gap: 8, marginTop: 12 }}>{approved ? <span style={{ color: "#34d399", background: "#064e3b", borderRadius: 20, padding: "7px 14px", fontSize: 12 }}>✓ キューに追加済み</span> : <><button onClick={approvePost} style={{ ...commonButton, background: "#064e3b", color: "#6ee7b7" }}>✓ 承認してキューへ</button><button className="ghost" onClick={() => setEditMode(!editMode)}>{editMode ? "プレビュー" : "✏️ 編集"}</button><button className="ghost" onClick={generateComment}>↺ 再生成</button></>}</div>}</div>}
+        </section>
 
-          {/* Generate Button */}
-          <button className="btn-primary" disabled={!canGenerate} onClick={generateComment}
-            style={{ background: canGenerate ? `linear-gradient(135deg, ${currentPersona.color}, #4c1d95)` : "#111120", marginBottom: 20 }}>
-            {loading ? <span>{currentPersona.emoji} 生成中<span className="loading-dots" /></span>
-              : `${currentPersona.emoji} ${currentPersona.name}として投稿を生成`}
-          </button>
+        {queue.length > 0 && <aside><p className="label">投稿キュー</p><div style={{ display: "grid", gap: 10 }}>{queue.map((item, i) => <div key={item.id} className="card" style={{ cursor: "default" }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ color: "#666", fontSize: 11 }}>{item.personaEmoji} {item.persona}</span><button onClick={() => setQueue(q => q.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", color: "#555", cursor: "pointer" }}>×</button></div><p style={{ fontSize: 13, lineHeight: 1.7 }}>{item.text}</p>{isValidUrl(item.url) && <a href={item.url} target="_blank" rel="noreferrer" style={{ color: "#3a5a8a", fontSize: 11, wordBreak: "break-all" }}>🔗 {item.source || "元記事"}</a>}<button className="ghost" onClick={() => copyWithFeedback(item.id, item.text + (item.url ? `\n${item.url}` : ""))} style={{ marginTop: 10, width: "100%" }}>{copiedId === item.id ? "✓ コピーしました" : "📋 コピー"}</button></div>)}<button className="ghost" onClick={() => copyWithFeedback("all", queue.map((q, i) => `【${i + 1}】${q.text}${q.url ? `\n${q.url}` : ""}`).join("\n\n"))}>{copiedId === "all" ? "✓ コピーしました" : "📋 全コメントをまとめてコピー"}</button></div></aside>}
+      </main>
 
-          {/* Output */}
-          {(loading || generated) && (
-            <div className="slide-in">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
-                <p className="label">生成された投稿</p>
-                {generated && !loading && (
-                  <span style={{ fontSize: 12, color: charOver ? "#f87171" : "#3a5a8a" }}>{charCount} / 140</span>
-                )}
-              </div>
-              {loading ? (
-                <div className="output-box" style={{ color: "#2a3a6a" }}>
-                  <span className="loading-dots">{currentPersona.name}が考えています</span>
-                </div>
-              ) : editMode ? (
-                <textarea value={editedText} onChange={e => setEditedText(e.target.value)} rows={5}
-                  style={{ borderColor: charOver ? "#7f1d1d" : undefined }} />
-              ) : (
-                <div className="output-box" style={{ borderColor: `${currentPersona.color}55` }}>
-                  <TypewriterText text={generated} />
-                </div>
-              )}
-              {generated && !loading && (
-                <div style={{ display: "flex", gap: 8, marginTop: 11, flexWrap: "wrap" }}>
-                  {approved ? (
-                    <>
-                      <span className="approved-badge">✓ キューに追加済み</span>
-                      <button className="btn-ghost" onClick={() => { setApproved(false); setEditMode(false); }}>取り消し</button>
-                    </>
-                  ) : (
-                    <>
-                      <button className="btn-approve" onClick={approvePost}>✓ 承認してキューへ</button>
-                      <button className="btn-ghost" onClick={() => setEditMode(!editMode)}>{editMode ? "プレビュー" : "✏️ 編集"}</button>
-                      <button className="btn-ghost" onClick={generateComment}>↺ 再生成</button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Queue Panel */}
-        {queue.length > 0 && (
-          <div className="slide-in">
-            <p className="label">投稿キュー</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {queue.map((item, i) => (
-                <div key={item.id} className="queue-item">
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7 }}>
-                    <span style={{ fontSize: 11, color: "#555" }}>{item.personaEmoji} {item.persona}</span>
-                    <button style={{ background: "none", border: "none", color: "#3a3a5a", cursor: "pointer", fontSize: 14 }}
-                      onClick={() => setQueue(q => q.filter((_, idx) => idx !== i))}>×</button>
-                  </div>
-                  <p style={{ fontSize: 12.5, lineHeight: 1.7, marginBottom: 8, color: "#ccc" }}>{item.text}</p>
-                  {isValidUrl(item.url) && (
-                    <a href={item.url} target="_blank" rel="noreferrer"
-                      style={{ display: "block", fontSize: 11, color: "#3a5a8a", marginBottom: 10, wordBreak: "break-all", lineHeight: 1.5 }}>
-                      🔗 {item.source || "元記事を開く"}
-                    </a>
-                  )}
-                  {!isValidUrl(item.url) && item.source && (
-                    <p style={{ fontSize: 10, color: "#3a5a8a", marginBottom: 8 }}>📰 {item.source}</p>
-                  )}
-                  {(() => {
-                    const tid = item.id + "_text";
-                    const uid = item.id + "_url";
-                    const copied = (id) => copiedId === id;
-                    const btnStyle = (id) => ({
-                      background: copied(id) ? "#064e3b" : "#0f1825",
-                      border: "1px solid " + (copied(id) ? "#1a4a3a" : "#1a3a5a"),
-                      color: copied(id) ? "#34d399" : "#7eb8f7",
-                      borderRadius: 6, padding: "5px 12px", fontSize: 11,
-                      cursor: "pointer", flex: 1, transition: "all 0.3s"
-                    });
-                    return (
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => copyWithFeedback(tid, item.text)} style={btnStyle(tid)}>
-                          {copied(tid) ? "✓ コピーしました！" : "📋 投稿をコピー"}
-                        </button>
-                        {isValidUrl(item.url) && (
-                          <button onClick={() => copyWithFeedback(uid, item.text + "\n" + item.url)} style={btnStyle(uid)}>
-                            {copied(uid) ? "✓ コピーしました！" : "📋 投稿＋URL"}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-              ))}
-              <button className="btn-ghost" style={{ fontSize: 11, transition: "all 0.3s", color: copiedId === "all" ? "#34d399" : undefined, borderColor: copiedId === "all" ? "#1a4a3a" : undefined }}
-                onClick={() => copyWithFeedback("all", queue.map((q, i) => `【${i + 1}】${q.text}${q.url ? "\n" + q.url : ""}`).join("\n\n"))}>
-                {copiedId === "all" ? "✓ コピーしました！" : "📋 全コメントをまとめてコピー"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div style={{ borderTop: "1px solid #141420", padding: "14px 20px", maxWidth: 820, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ fontSize: 11, color: "#2a2a4a" }}>AI Post Studio v1.0</p>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 11, color: "#3a3a5a" }}>自動承認モード</span>
-          <div
-            onClick={toggleAutoApprove}
-            style={{
-              width: 44, height: 24, borderRadius: 12, cursor: "pointer",
-              background: autoApprove ? "#1d4ed8" : "#1a1a2a",
-              border: `1px solid ${autoApprove ? "#3a6aee" : "#2a2a4a"}`,
-              position: "relative", transition: "all 0.3s", flexShrink: 0
-            }}>
-            <div style={{
-              width: 18, height: 18, borderRadius: "50%",
-              background: autoApprove ? "#fff" : "#555",
-              position: "absolute", top: 2,
-              left: autoApprove ? 22 : 2,
-              transition: "all 0.3s"
-            }} />
-          </div>
-          <span style={{
-            fontSize: 10, borderRadius: 4, padding: "3px 10px",
-            color: autoApprove ? "#7eb8f7" : "#3a3a5a",
-            background: autoApprove ? "#0d1825" : "#0d0d0d",
-            border: `1px solid ${autoApprove ? "#1a3a5a" : "#1a1a1a"}`
-          }}>
-            {autoApprove ? "自動承認 ON" : "承認モード ON"}
-          </span>
-        </div>
-      </div>
+      <footer style={{ borderTop: "1px solid #141420", padding: "14px 20px", maxWidth: 960, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <p style={{ fontSize: 11, color: "#2a2a4a" }}>AI Post Studio v1.1 / OpenAI API</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 11, color: "#3a3a5a" }}>自動承認モード</span><button className="ghost" onClick={toggleAutoApprove}>{autoApprove ? "自動承認 ON" : "承認モード ON"}</button></div>
+      </footer>
     </div>
   );
 }
