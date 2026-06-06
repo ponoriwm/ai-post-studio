@@ -53,7 +53,38 @@
       a {
         color: var(--aps-accent) !important;
       }
+
+      [data-source-url-inline="true"] {
+        color: #9fd0ff !important;
+        font-size: 11px !important;
+        line-height: 1.6 !important;
+        margin: 8px 0 0 !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+      }
     </style>
+    <script>
+      (() => {
+        function enhanceQueueCards() {
+          document.querySelectorAll("aside .card").forEach((card) => {
+            const sourceLink = card.querySelector('a[href^="http"]');
+            const body = card.querySelector("p");
+            if (!sourceLink || !body || card.querySelector('[data-source-url-inline="true"]')) return;
+
+            const source = document.createElement("div");
+            source.setAttribute("data-source-url-inline", "true");
+            source.textContent = `元ソース: ${sourceLink.href}`;
+            body.insertAdjacentElement("afterend", source);
+          });
+        }
+
+        window.addEventListener("load", () => {
+          enhanceQueueCards();
+          const observer = new MutationObserver(enhanceQueueCards);
+          observer.observe(document.body, { childList: true, subtree: true });
+        });
+      })();
+    </script>
   </head>
   <body>
     <noscript>JavaScriptを有効にしてください。</noscript>
