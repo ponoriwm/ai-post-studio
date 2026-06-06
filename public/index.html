@@ -62,9 +62,40 @@
         overflow-wrap: anywhere !important;
         word-break: break-word !important;
       }
+
+      .aps-kazane-card {
+        text-align: left !important;
+        border-color: rgba(67, 217, 173, 0.6) !important;
+        background: linear-gradient(135deg, rgba(8, 62, 55, 0.75), rgba(17, 17, 26, 0.96)) !important;
+      }
+
+      .aps-kazane-card.is-active {
+        border-color: #43d9ad !important;
+        box-shadow: 0 0 0 1px rgba(67, 217, 173, 0.22), 0 0 20px rgba(67, 217, 173, 0.12) !important;
+      }
     </style>
     <script>
       (() => {
+        const KAZANE_PROMPT = `あなたはPONORI合同会社の広報担当エージェント「カザネ」です。新しいAI技術や創作の兆しを風のように読み取り、PONORIの事業視点でやさしく伝えます。
+【役割】
+- PONORIのAIアニメーション制作・生成AI活用支援・IP開発に関係する視点でコメントする
+- 単なるニュース要約ではなく、制作現場・クリエイター・小さなスタジオにとっての意味を添える
+- 誇大広告や煽りは避け、実務に使える気づきを短く伝える
+- PONORIの宣伝色を強くしすぎず、自然に「現場目線」「創作目線」を出す
+【口調】
+- 落ち着いた、知的で親しみやすい広報担当
+- やわらかいが、意見ははっきり言う
+- 「これは制作現場にも効いてきそうです」「小さなスタジオほど注目したい動きです」など、現場への接続を意識する
+【投稿の構成】
+1. ニュースの要点を一文で受ける
+2. PONORI・AIアニメ・制作現場の視点で意味を添える
+3. 必要なら読者に問いかける
+【投稿スタイル】
+- 140文字以内
+- ハッシュタグは1〜2個まで
+- 絵文字は使っても1つまで
+- 元記事URLは本文に含めない。URLはアプリ側で別途付与される`;
+
         function enhanceQueueCards() {
           document.querySelectorAll("aside .card").forEach((card) => {
             const sourceLink = card.querySelector('a[href^="http"]');
@@ -78,9 +109,79 @@
           });
         }
 
-        window.addEventListener("load", () => {
+        function findPersonaGrid() {
+          const labels = Array.from(document.querySelectorAll(".label"));
+          const personaLabel = labels.find((node) => node.textContent?.includes("人格を選択"));
+          const grid = personaLabel?.nextElementSibling;
+          if (!grid || !grid.querySelector("button.card")) return null;
+          return grid;
+        }
+
+        function setNativeTextareaValue(textarea, value) {
+          const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+          if (setter) setter.call(textarea, value);
+          else textarea.value = value;
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          textarea.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        function findPromptToggleButton() {
+          return Array.from(document.querySelectorAll("button")).find((button) => {
+            const text = button.textContent || "";
+            return text.includes("プロンプト") || text.includes("閉じる");
+          });
+        }
+
+        function applyKazanePrompt() {
+          const promptButton = findPromptToggleButton();
+          const wasPromptOpen = Array.from(document.querySelectorAll("textarea")).some((area) => area.value.includes("あなたは"));
+          if (!wasPromptOpen && promptButton) promptButton.click();
+
+          window.setTimeout(() => {
+            const textarea = Array.from(document.querySelectorAll("textarea")).find((area) => area.value.includes("あなたは") || area.rows >= 5);
+            if (!textarea) return;
+            setNativeTextareaValue(textarea, KAZANE_PROMPT);
+            document.querySelectorAll(".aps-kazane-card").forEach((button) => button.classList.add("is-active"));
+          }, 120);
+        }
+
+        function injectKazanePersona() {
+          const grid = findPersonaGrid();
+          if (!grid) return;
+
+          grid.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+          grid.style.gap = "10px";
+
+          if (grid.querySelector(".aps-kazane-card")) return;
+
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "card aps-kazane-card";
+          button.innerHTML = `
+            <div style="font-size:18px">🍃</div>
+            <div style="font-size:12px;font-weight:700;color:#9fd0ff">カザネ</div>
+            <div style="font-size:10px;color:#8fa0b8">PONORI広報・制作現場目線</div>
+          `;
+          button.addEventListener("click", applyKazanePrompt);
+          grid.appendChild(button);
+        }
+
+        function enhance() {
           enhanceQueueCards();
-          const observer = new MutationObserver(enhanceQueueCards);
+          injectKazanePersona();
+        }
+
+        window.addEventListener("load", () => {
+          enhance();
+          let scheduled = false;
+          const observer = new MutationObserver(() => {
+            if (scheduled) return;
+            scheduled = true;
+            window.setTimeout(() => {
+              scheduled = false;
+              enhance();
+            }, 100);
+          });
           observer.observe(document.body, { childList: true, subtree: true });
         });
       })();
