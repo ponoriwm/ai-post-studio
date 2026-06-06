@@ -10,6 +10,13 @@ function getOutputText(data) {
     .join("\n");
 }
 
+function normalizeModel(model) {
+  // Cost-saving guard: the current frontend may still request gpt-4.1 for post generation.
+  // Route it to gpt-4.1-mini so operation tests stay inexpensive.
+  if (model === "gpt-4.1") return "gpt-4.1-mini";
+  return model;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -35,7 +42,7 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model,
+        model: normalizeModel(model),
         instructions,
         input,
         max_output_tokens: max_output_tokens || 1200,
