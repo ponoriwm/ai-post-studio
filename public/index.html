@@ -6,6 +6,54 @@
     <meta name="theme-color" content="#08080f" />
     <meta name="description" content="AI Post Studio - AIニュース収集＆投稿生成" />
     <title>AI Post Studio</title>
+    <style>
+      :root {
+        --aps-text-main: #d8e2f0;
+        --aps-text-sub: #a9b6c8;
+        --aps-text-muted: #7f8da3;
+        --aps-accent: #7eb8f7;
+      }
+
+      .label {
+        color: #6f7da0 !important;
+      }
+
+      .card,
+      .card * {
+        color: var(--aps-text-main) !important;
+      }
+
+      .card p,
+      .card div {
+        color: var(--aps-text-sub) !important;
+      }
+
+      .card strong {
+        color: #eef5ff !important;
+      }
+
+      .card[style*="border-color"] strong,
+      .card[style*="border-color"] div:first-child {
+        color: var(--aps-accent) !important;
+      }
+
+      .tag {
+        color: var(--aps-text-sub) !important;
+      }
+
+      .tag.active {
+        color: #cfe7ff !important;
+      }
+
+      button:disabled,
+      button:disabled * {
+        color: var(--aps-text-muted) !important;
+      }
+
+      a {
+        color: var(--aps-accent) !important;
+      }
+    </style>
   </head>
   <body>
     <noscript>JavaScriptを有効にしてください。</noscript>
