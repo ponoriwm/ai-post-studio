@@ -73,6 +73,15 @@
         border-color: #43d9ad !important;
         box-shadow: 0 0 0 1px rgba(67, 217, 173, 0.22), 0 0 20px rgba(67, 217, 173, 0.12) !important;
       }
+
+      html.aps-kazane-active [data-aps-persona-grid] > button:not(.aps-kazane-card) {
+        border-color: #1c1c2e !important;
+        box-shadow: none !important;
+      }
+
+      html.aps-kazane-active [data-aps-persona-grid] > button:not(.aps-kazane-card) div:nth-child(2) {
+        color: #d8e2f0 !important;
+      }
     </style>
     <script>
       (() => {
@@ -114,6 +123,7 @@
           const personaLabel = labels.find((node) => node.textContent?.includes("人格を選択"));
           const grid = personaLabel?.nextElementSibling;
           if (!grid || !grid.querySelector("button.card")) return null;
+          grid.setAttribute("data-aps-persona-grid", "true");
           return grid;
         }
 
@@ -132,6 +142,24 @@
           });
         }
 
+        function updateGenerateButtonLabel() {
+          const buttons = Array.from(document.querySelectorAll("button"));
+          const generateButton = buttons.find((button) => {
+            const text = button.textContent || "";
+            return text.includes("として投稿を生成") || text.includes("生成中");
+          });
+          if (!generateButton) return;
+          const text = generateButton.textContent || "";
+          const next = text.includes("生成中") ? "🍃 カザネ 生成中…" : "🍃 カザネとして投稿を生成";
+          if (generateButton.textContent !== next) generateButton.textContent = next;
+        }
+
+        function setKazaneActive(active) {
+          document.documentElement.classList.toggle("aps-kazane-active", active);
+          document.querySelectorAll(".aps-kazane-card").forEach((button) => button.classList.toggle("is-active", active));
+          if (active) updateGenerateButtonLabel();
+        }
+
         function applyKazanePrompt() {
           const promptButton = findPromptToggleButton();
           const wasPromptOpen = Array.from(document.querySelectorAll("textarea")).some((area) => area.value.includes("あなたは"));
@@ -141,7 +169,7 @@
             const textarea = Array.from(document.querySelectorAll("textarea")).find((area) => area.value.includes("あなたは") || area.rows >= 5);
             if (!textarea) return;
             setNativeTextareaValue(textarea, KAZANE_PROMPT);
-            document.querySelectorAll(".aps-kazane-card").forEach((button) => button.classList.add("is-active"));
+            setKazaneActive(true);
           }, 120);
         }
 
@@ -151,6 +179,12 @@
 
           grid.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
           grid.style.gap = "10px";
+
+          Array.from(grid.querySelectorAll("button.card:not(.aps-kazane-card)")).forEach((button) => {
+            if (button.dataset.apsDeactivateKazane === "true") return;
+            button.dataset.apsDeactivateKazane = "true";
+            button.addEventListener("click", () => setKazaneActive(false), true);
+          });
 
           if (grid.querySelector(".aps-kazane-card")) return;
 
@@ -169,6 +203,7 @@
         function enhance() {
           enhanceQueueCards();
           injectKazanePersona();
+          if (document.documentElement.classList.contains("aps-kazane-active")) updateGenerateButtonLabel();
         }
 
         window.addEventListener("load", () => {
@@ -180,7 +215,7 @@
             window.setTimeout(() => {
               scheduled = false;
               enhance();
-            }, 100);
+            }, 120);
           });
           observer.observe(document.body, { childList: true, subtree: true });
         });
