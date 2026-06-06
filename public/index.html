@@ -82,6 +82,44 @@
       html.aps-kazane-active [data-aps-persona-grid] > button:not(.aps-kazane-card) div:nth-child(2) {
         color: #d8e2f0 !important;
       }
+
+      @media (max-width: 760px) {
+        main {
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: 20px !important;
+          padding: 16px !important;
+        }
+
+        main > aside {
+          width: 100% !important;
+          order: 2 !important;
+        }
+
+        main > section {
+          min-width: 0 !important;
+          order: 1 !important;
+        }
+
+        header > div {
+          flex-wrap: wrap !important;
+          gap: 12px !important;
+        }
+
+        [data-aps-persona-grid] {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+
+        .card {
+          min-width: 0 !important;
+        }
+      }
+
+      @media (max-width: 480px) {
+        [data-aps-persona-grid] {
+          grid-template-columns: 1fr !important;
+        }
+      }
     </style>
     <script>
       (() => {
