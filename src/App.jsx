@@ -358,6 +358,7 @@ export default function App() {
   const [sourceError, setSourceError] = useState("");
 
   const [customNews, setCustomNews] = useState("");
+  const [memoText, setMemoText] = useState("");
   const [generated, setGenerated] = useState(null);
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -383,7 +384,9 @@ export default function App() {
         ? !!selectedPost
         : activeTab === "url"
           ? !!sourceItem
-          : customNews.trim().length > 0
+          : activeTab === "memo"
+            ? memoText.trim().length > 0
+            : customNews.trim().length > 0
   );
 
   useEffect(() => {
@@ -570,26 +573,29 @@ export default function App() {
     setGenerated(null);
     setApproved(false);
     setEditMode(false);
+    const isMemoPost = activeTab === "memo";
     const newsText = activeTab === "custom"
       ? customNews
       : activeTab === "sns"
         ? `話題のポスト: ${selectedPost.title}\n内容: ${selectedPost.summary}\n反応: ${selectedPost.reaction || ""}`
         : activeTab === "url"
           ? `URL素材: ${sourceItem.title}\n概要: ${sourceItem.summary}\n媒体/投稿者: ${sourceItem.source || ""}\n反応/論調: ${sourceItem.reaction || ""}\nURL: ${sourceItem.url}`
-          : `タイトル: ${selectedNews.title}\n概要: ${selectedNews.summary}`;
+          : activeTab === "memo"
+            ? `メモ:\n${memoText}`
+            : `タイトル: ${selectedNews.title}\n概要: ${selectedNews.summary}`;
 
     try {
       const text = await callOpenAI(apiKey, {
         model: MODEL_GEN,
         max_output_tokens: 600,
         instructions: activePrompt,
-        input: `以下のAIニュースについてSNS投稿文を1つ生成してください。
+        input: `${isMemoPost ? "以下のメモをもとに、SNS投稿文を1つ生成してください。ニュースへのコメントではなく、投稿者本人の出来事・感想・気づきとして自然に書いてください。" : "以下のAIニュースについてSNS投稿文を1つ生成してください。"}
 媒体: ${currentPlatform.name}
 文字数: ${currentPlatform.limit}文字以内
 目的: ${currentGoal.name}
 媒体ルール: ${currentPlatform.instruction}
 投稿方針: ${currentGoal.instruction}
-制約: ハッシュタグ1〜2個まで。投稿文だけ返してください。URLは本文に含めないでください。
+制約: ハッシュタグは必要な場合のみ1〜2個まで。投稿文だけ返してください。${isMemoPost ? "元記事URLやニュース参照は追加しないでください。" : "URLは本文に含めないでください。"}
 
 ${newsText}`,
       });
@@ -605,7 +611,7 @@ ${newsText}`,
   }
 
   function addToQueue(text) {
-    const title = activeTab === "search" ? selectedNews?.title : activeTab === "sns" ? selectedPost?.title : activeTab === "url" ? sourceItem?.title : customNews.slice(0, 30) + "…";
+    const title = activeTab === "search" ? selectedNews?.title : activeTab === "sns" ? selectedPost?.title : activeTab === "url" ? sourceItem?.title : activeTab === "memo" ? memoText.slice(0, 30) + "…" : customNews.slice(0, 30) + "…";
     const url = activeTab === "search" ? selectedNews?.url : activeTab === "sns" ? selectedPost?.url : activeTab === "url" ? sourceItem?.url : null;
     const source = activeTab === "search" ? selectedNews?.source : activeTab === "sns" ? selectedPost?.source : activeTab === "url" ? sourceItem?.source : null;
     setQueue(q => [...q, {
@@ -711,7 +717,7 @@ ${newsText}`,
           {showPersona && <div style={{ marginBottom: 20 }}><p className="label">人格プロンプト（編集可能）</p><textarea rows={8} value={activePrompt} onChange={e => setCustomPersona(e.target.value)} /></div>}
 
           <div className="tabbar" style={{ borderBottom: "1px solid #141420", marginBottom: 18 }}>
-            {[{ id: "search", label: "🔍 ニュース検索" }, { id: "sns", label: "𝕏 SNSトレンド" }, { id: "url", label: "🔗 URL入力" }, { id: "custom", label: "✏️ 自由入力" }].map(tab => (
+            {[{ id: "search", label: "🔍 ニュース検索" }, { id: "sns", label: "𝕏 SNSトレンド" }, { id: "url", label: "🔗 URL入力" }, { id: "memo", label: "🗒 メモ投稿" }, { id: "custom", label: "✏️ 自由入力" }].map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ background: "none", border: "none", borderBottom: activeTab === tab.id ? "2px solid #7eb8f7" : "2px solid transparent", color: activeTab === tab.id ? "#7eb8f7" : "#555", padding: "10px 16px", cursor: "pointer" }}>{tab.label}</button>
             ))}
           </div>
@@ -786,6 +792,25 @@ ${newsText}`,
                   </div>
                 </article>
               )}
+            </div>
+          )}
+
+          {activeTab === "memo" && (
+            <div>
+              <p className="label">メモから投稿を作成</p>
+              <textarea
+                rows={7}
+                placeholder={"例:\n- 今日、制作MTGでAI動画の使いどころを話した\n- 全部AIに任せるより、ラフや検証に使うのが現実的\n- 小さいチームほど試作速度が効きそう\n- でも最終判断は人の感覚が大事だと思った"}
+                value={memoText}
+                onChange={e => {
+                  setMemoText(e.target.value);
+                  setGenerated(null);
+                  setApproved(false);
+                }}
+              />
+              <p style={{ color: "#4a4a6a", fontSize: 12, lineHeight: 1.7, marginTop: 8 }}>
+                箇条書き、日記、感想、気づき、制作メモなどを、選択中の人格の語り口で通常ポストに整えます。
+              </p>
             </div>
           )}
 
