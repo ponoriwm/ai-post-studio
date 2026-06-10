@@ -146,6 +146,19 @@ async function callOpenAI(apiKey, { model, instructions, input, max_output_token
   return data.output_text || "";
 }
 
+async function fetchSourcePreview(url) {
+  const response = await fetch("/api/source", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  const data = await response.json();
+  if (!response.ok || data.error) {
+    throw new Error(data.error?.message || "URL fetch failed");
+  }
+  return data;
+}
+
 function extractJsonArray(text) {
   if (!text) return null;
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -189,6 +202,19 @@ function normalizeSourceItem(item, fallbackUrl = "") {
     reaction: item.reaction || item.r || "",
   };
   return normalized.title || normalized.summary ? normalized : null;
+}
+
+function normalizeSourcePreview(preview, fallbackUrl = "") {
+  if (!preview || typeof preview !== "object") return null;
+  return normalizeSourceItem({
+    title: preview.title || "",
+    summary: preview.description || preview.text?.slice(0, 90) || "",
+    source: preview.source || "",
+    url: preview.url || fallbackUrl,
+    date: preview.publishedAt ? String(preview.publishedAt).slice(0, 10) : "",
+    tags: [],
+    reaction: "中立",
+  }, fallbackUrl);
 }
 
 function extractJsonObject(text) {
@@ -503,6 +529,25 @@ export default function App() {
     setGenerated(null);
     setApproved(false);
     try {
+      let preview = null;
+      try {
+        preview = await fetchSourcePreview(url);
+      } catch {}
+
+      if (preview?.title || preview?.description || preview?.text) {
+        const text = await callOpenAI(apiKey, {
+          model: MODEL_SEARCH,
+          max_output_tokens: 900,
+          instructions: "あなたはURL先の投稿・ニュースをSNS投稿素材として整理するアシスタントです。回答はJSONオブジェクトのみ。説明文やMarkdownは禁止。",
+          input: `次のURL先から抽出した情報を、AI Post Studioでコメント生成に使える素材として要約してください。\n\nURL: ${preview.url || url}\n媒体: ${preview.source || ""}\nタイトル: ${preview.title || ""}\n説明: ${preview.description || ""}\n本文抜粋:\n${(preview.text || "").slice(0, 3500)}\n\n返答形式:\n{"t":"30字以内のタイトル","s":"60字以内の要約","src":"媒体名または投稿者名","u":"元URL","d":"公開日が分かればYYYY-MM-DD、不明なら空文字","tags":["タグ"],"r":"投稿や記事の論調をポジティブ/ネガティブ/中立で一語"}`,
+        });
+        const item = normalizeSourceItem(extractJsonObject(text), preview.url || url) || normalizeSourcePreview(preview, url);
+        if (item) {
+          setSourceItem(item);
+          return;
+        }
+      }
+
       const text = await callOpenAI(apiKey, {
         model: MODEL_SEARCH,
         useSearch: true,

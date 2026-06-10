@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import openAiHandler from "./api/openai.js";
+import sourceHandler from "./api/source.js";
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -22,10 +23,15 @@ function readJsonBody(req) {
 }
 
 function localApiPlugin() {
+  const routes = {
+    "/api/openai": openAiHandler,
+    "/api/source": sourceHandler,
+  };
+
   return {
     name: "local-vercel-api",
     configureServer(server) {
-      server.middlewares.use("/api/openai", async (req, res) => {
+      Object.entries(routes).forEach(([route, handler]) => server.middlewares.use(route, async (req, res) => {
         try {
           req.body = await readJsonBody(req);
           const apiRes = {
@@ -40,13 +46,13 @@ function localApiPlugin() {
             },
           };
 
-          await openAiHandler(req, apiRes);
+          await handler(req, apiRes);
         } catch (error) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify({ error: { message: error?.message || "Local API error" } }));
         }
-      });
+      }));
     },
   };
 }
