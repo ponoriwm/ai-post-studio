@@ -15,10 +15,12 @@ Claude / Anthropic API 前提だった実装を、OpenAI Responses API 版に移
 
 ```bash
 npm install
-npm start
+npm run dev
 ```
 
-ローカル開発では、画面上部のAPIキー設定欄に OpenAI APIキーを入力してください。
+ローカルでフロントだけ確認する場合は `npm run dev` を使います。`/api/openai` も含めて確認する場合は、Vercel CLI の `vercel dev` を使うと本番に近い形で動作確認できます。
+
+画面上部のAPIキー設定欄に OpenAI APIキーを入力してください。
 
 ## デプロイ（Vercel）
 
@@ -26,6 +28,12 @@ npm start
 2. vercel.com でGitHubと連携
 3. リポジトリを選択してデプロイ
 4. Vercelの Environment Variables に `OPENAI_API_KEY` を設定
+
+Vercel は Vite 構成を自動検出します。
+
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- Serverless Function: `api/openai.js`
 
 > 画面から入力したAPIキーも利用できますが、本番運用では Vercel 側の `OPENAI_API_KEY` 管理を推奨します。
 
@@ -39,12 +47,13 @@ npm start
 
 ## 主なファイル
 
-- `src/App.js`：Reactフロントエンド本体
+- `src/App.jsx`：Reactフロントエンド本体
+- `src/main.jsx`：Vite用のReactエントリポイント
 - `api/openai.js`：OpenAI Responses APIへの中継エンドポイント
 
 ## モデル設定
 
-`src/App.js` 内で以下を設定しています。
+`src/App.jsx` 内で以下を設定しています。
 
 ```js
 const MODEL_SEARCH = "gpt-4.1-mini";

@@ -106,6 +106,19 @@ const SNS_CATEGORIES = [
 const MODEL_SEARCH = "gpt-4.1-mini";
 const MODEL_GEN = "gpt-4.1";
 const CACHE_TTL = 3 * 60 * 60 * 1000;
+const QUEUE_STORAGE_KEY = "ai_post_studio_queue";
+
+const PLATFORM_PRESETS = [
+  { id: "x", name: "X", limit: 140, instruction: "X向け。短く、読み切りやすく、改行は必要な場合のみ。" },
+  { id: "threads", name: "Threads", limit: 300, instruction: "Threads向け。少し余白のある自然な文章。問いかけか補足を入れてよい。" },
+  { id: "linkedin", name: "LinkedIn", limit: 500, instruction: "LinkedIn向け。ビジネス文脈で、学びや示唆が伝わる落ち着いた文章。" },
+];
+
+const POST_GOALS = [
+  { id: "engage", name: "反応を増やす", instruction: "読者が意見を返したくなる問いかけで締める。" },
+  { id: "insight", name: "洞察を出す", instruction: "ニュースの背景や次に起きそうな変化を1つ添える。" },
+  { id: "summary", name: "要点共有", instruction: "事実と要点を優先し、主観は控えめにする。" },
+];
 
 async function callOpenAI(apiKey, { model, instructions, input, max_output_tokens = 1200, useSearch = false }) {
   const response = await fetch("/api/openai", {
@@ -122,6 +135,10 @@ async function callOpenAI(apiKey, { model, instructions, input, max_output_token
       tools: useSearch ? [{ type: "web_search_preview" }] : [],
     }),
   });
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new Error("LOCAL_API_NOT_READY");
+  }
   const data = await response.json();
   if (!response.ok || data.error) {
     throw new Error(data.error?.message || "OpenAI API request failed");
@@ -195,6 +212,16 @@ function setCache(key, data) {
   try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch {}
 }
 
+function getStoredQueue() {
+  try {
+    const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function isValidUrl(url) {
   if (!url || url === "https://example.com" || url === "URL" || url === "URL不明") return false;
   try {
@@ -209,6 +236,7 @@ function analyzeError(error, context) {
   const msg = error?.message || "";
   if (msg.includes("rate") || msg.includes("429")) return "⏱ APIの利用制限に達しました。少し待ってから再試行してください。";
   if (msg.includes("401") || msg.includes("invalid") || msg.includes("authentication") || msg.includes("API key")) return "🔑 OpenAI APIキーが無効です。右上の🔑ボタンから確認してください。";
+  if (msg.includes("LOCAL_API_NOT_READY")) return "🛠 ローカルAPIが起動していません。Vite開発サーバーを再起動してから再試行してください。";
   if (msg.includes("JSON") || msg.includes("記事が取得できませんでした")) {
     return context === "multi"
       ? "📉 複数カテゴリの検索結果が長くなりすぎました。カテゴリを1〜2つに絞って再試行してください。"
@@ -274,15 +302,24 @@ export default function App() {
   const [editMode, setEditMode] = useState(false);
   const [editedText, setEditedText] = useState("");
   const [approved, setApproved] = useState(false);
-  const [queue, setQueue] = useState([]);
+  const [queue, setQueue] = useState(getStoredQueue);
   const [copiedId, setCopiedId] = useState(null);
   const [autoApprove, setAutoApprove] = useState(() => localStorage.getItem("ai_auto_approve") === "true");
+  const [platformId, setPlatformId] = useState("x");
+  const [postGoalId, setPostGoalId] = useState("engage");
+  const [includeSourceUrl, setIncludeSourceUrl] = useState(true);
 
   const currentPersona = PERSONAS.find(p => p.id === selectedPersonaId) || PERSONAS[0];
   const activePrompt = customPersona !== null ? customPersona : currentPersona.prompt;
+  const currentPlatform = PLATFORM_PRESETS.find(p => p.id === platformId) || PLATFORM_PRESETS[0];
+  const currentGoal = POST_GOALS.find(g => g.id === postGoalId) || POST_GOALS[0];
   const charCount = (editMode ? editedText : generated)?.length || 0;
-  const charOver = charCount > 140;
+  const charOver = charCount > currentPlatform.limit;
   const canGenerate = !loading && !!apiKey && (activeTab === "search" ? !!selectedNews : activeTab === "sns" ? !!selectedPost : customNews.trim().length > 0);
+
+  useEffect(() => {
+    try { localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue)); } catch {}
+  }, [queue]);
 
   function saveApiKey(key) {
     setApiKey(key.trim());
@@ -428,7 +465,15 @@ export default function App() {
         model: MODEL_GEN,
         max_output_tokens: 600,
         instructions: activePrompt,
-        input: `以下のAIニュースについてXに投稿するコメントを1つ生成してください。140文字以内、ハッシュタグ1〜2個まで。投稿文だけ返してください。\n\n${newsText}`,
+        input: `以下のAIニュースについてSNS投稿文を1つ生成してください。
+媒体: ${currentPlatform.name}
+文字数: ${currentPlatform.limit}文字以内
+目的: ${currentGoal.name}
+媒体ルール: ${currentPlatform.instruction}
+投稿方針: ${currentGoal.instruction}
+制約: ハッシュタグ1〜2個まで。投稿文だけ返してください。URLは本文に含めないでください。
+
+${newsText}`,
       });
       const cleanText = text.trim() || "生成失敗";
       setGenerated(cleanText);
@@ -445,7 +490,20 @@ export default function App() {
     const title = activeTab === "search" ? selectedNews?.title : activeTab === "sns" ? selectedPost?.title : customNews.slice(0, 30) + "…";
     const url = activeTab === "search" ? selectedNews?.url : activeTab === "sns" ? selectedPost?.url : null;
     const source = activeTab === "search" ? selectedNews?.source : activeTab === "sns" ? selectedPost?.source : null;
-    setQueue(q => [...q, { id: Date.now(), text, newsTitle: title, url, source, persona: currentPersona.name, personaEmoji: currentPersona.emoji }]);
+    setQueue(q => [...q, {
+      id: Date.now(),
+      text,
+      newsTitle: title,
+      url,
+      source,
+      persona: currentPersona.name,
+      personaEmoji: currentPersona.emoji,
+      platform: currentPlatform.name,
+      platformLimit: currentPlatform.limit,
+      goal: currentGoal.name,
+      includeSourceUrl,
+      createdAt: new Date().toISOString(),
+    }]);
     setApproved(true);
   }
 
@@ -471,11 +529,16 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: "#08080f", color: "#e2e2f0", fontFamily: "'Noto Sans JP', system-ui, sans-serif" }}>
       <style>{`
         *{box-sizing:border-box} body{margin:0}.cursor{animation:blink .8s step-end infinite}@keyframes blink{50%{opacity:0}}
-        input,textarea{background:#0c0c18;border:1px solid #252540;border-radius:10px;color:#e2e2f0;font-family:inherit;padding:12px;outline:none;width:100%}
+        button{font-family:inherit} input,textarea{background:#0c0c18;border:1px solid #252540;border-radius:10px;color:#e2e2f0;font-family:inherit;padding:12px;outline:none;width:100%}
         textarea{resize:vertical;line-height:1.7}.label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#3a3a5a;font-weight:700;margin:0 0 9px}
         .card{background:#11111a;border:1px solid #1c1c2e;border-radius:12px;padding:14px;cursor:pointer;transition:.2s}.card:hover{border-color:#2a2a4a;background:#14141f}.selected{border-color:#3a5a8a;background:#0f1825}
         .ghost{background:none;border:1px solid #252535;color:#777;border-radius:8px;padding:7px 12px;font-size:12px;font-family:inherit;cursor:pointer}.ghost:hover{border-color:#3a3a5a;color:#bbb}
         .tag{background:#11111a;border:1px solid #1c1c2e;border-radius:20px;padding:5px 12px;font-size:12px;color:#666;cursor:pointer}.tag.active{background:#1a3a5a;border-color:#3a6a9a;color:#7eb8f7}
+        .app-header-inner{max-width:960px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:16px}.header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .app-main{max-width:960px;margin:0 auto;padding:24px;display:grid;gap:24px}.persona-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px}
+        .category-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}.option-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+        .segmented{display:flex;gap:7px;flex-wrap:wrap}.queue-meta{display:flex;gap:6px;flex-wrap:wrap;color:#555;font-size:10px;margin-top:8px}.queue-actions{display:grid;gap:8px}
+        @media (max-width:760px){.app-header-inner{align-items:flex-start;flex-direction:column}.app-main{grid-template-columns:1fr!important;padding:18px}.persona-grid{grid-template-columns:repeat(2,1fr)}.category-grid,.option-grid{grid-template-columns:1fr}.header-actions{width:100%}.tabbar{display:flex;overflow-x:auto}.tabbar button{white-space:nowrap}.footer-inner{align-items:flex-start!important;flex-direction:column;gap:10px}}
       `}</style>
 
       {showApiSetup && (
@@ -501,12 +564,12 @@ export default function App() {
       )}
 
       <header style={{ borderBottom: "1px solid #141420", padding: "15px 20px" }}>
-        <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="app-header-inner">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg, ${currentPersona.color}, #7c3aed)`, display: "grid", placeItems: "center" }}>{currentPersona.emoji}</div>
             <div><strong>AI Post Studio</strong><span style={{ color: "#3a3a6a", marginLeft: 8, fontSize: 12 }}>/ OpenAI API版 / {currentPersona.name}</span></div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="header-actions">
             {queue.length > 0 && <span style={{ fontSize: 12, color: "#34d399", background: "#064e3b", borderRadius: 12, padding: "5px 10px" }}>承認済み {queue.length}件</span>}
             <button className="ghost" onClick={() => setShowApiSetup(!showApiSetup)}>{apiKey ? "🔑" : "⚠ APIキー未設定"}</button>
             <button className="ghost" onClick={() => setShowPersona(!showPersona)}>{showPersona ? "閉じる" : "🧠 プロンプト"}</button>
@@ -514,10 +577,10 @@ export default function App() {
         </div>
       </header>
 
-      <main style={{ maxWidth: 960, margin: "0 auto", padding: 24, display: "grid", gridTemplateColumns: queue.length > 0 ? "1fr 300px" : "1fr", gap: 24 }}>
+      <main className="app-main" style={{ gridTemplateColumns: queue.length > 0 ? "1fr 300px" : "1fr" }}>
         <section>
           <p className="label">人格を選択</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 8, marginBottom: 20 }}>
+          <div className="persona-grid">
             {PERSONAS.map(p => (
               <button key={p.id} className="card" onClick={() => { setSelectedPersonaId(p.id); setCustomPersona(null); setGenerated(null); }} style={{ textAlign: "left", borderColor: selectedPersonaId === p.id ? p.accent : undefined }}>
                 <div style={{ fontSize: 18 }}>{p.emoji}</div>
@@ -529,7 +592,7 @@ export default function App() {
 
           {showPersona && <div style={{ marginBottom: 20 }}><p className="label">人格プロンプト（編集可能）</p><textarea rows={8} value={activePrompt} onChange={e => setCustomPersona(e.target.value)} /></div>}
 
-          <div style={{ borderBottom: "1px solid #141420", marginBottom: 18 }}>
+          <div className="tabbar" style={{ borderBottom: "1px solid #141420", marginBottom: 18 }}>
             {[{ id: "search", label: "🔍 ニュース検索" }, { id: "sns", label: "𝕏 SNSトレンド" }, { id: "custom", label: "✏️ 自由入力" }].map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ background: "none", border: "none", borderBottom: activeTab === tab.id ? "2px solid #7eb8f7" : "2px solid transparent", color: activeTab === tab.id ? "#7eb8f7" : "#555", padding: "10px 16px", cursor: "pointer" }}>{tab.label}</button>
             ))}
@@ -540,7 +603,7 @@ export default function App() {
               <p className="label">期間</p>
               <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap" }}>{[{ label: "24時間", value: "1" }, { label: "3日", value: "3" }, { label: "1週間", value: "7" }, { label: "2週間", value: "14" }, { label: "1ヶ月", value: "30" }].map(d => <button key={d.value} className={`tag ${dateRange === d.value ? "active" : ""}`} onClick={() => { setDateRange(d.value); setFetchedNews([]); setSelectedNews(null); }}>{d.label}</button>)}</div>
               <p className="label">カテゴリを選択（複数可）</p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginBottom: 14 }}>{NEWS_CATEGORIES.map(c => <button key={c.id} className="card" onClick={() => toggleCategory(c)} style={{ textAlign: "left", borderColor: selectedCategories.find(s => s.id === c.id) ? "#3a5a8a" : undefined }}>{c.emoji} {c.name}</button>)}</div>
+              <div className="category-grid">{NEWS_CATEGORIES.map(c => <button key={c.id} className="card" onClick={() => toggleCategory(c)} style={{ textAlign: "left", borderColor: selectedCategories.find(s => s.id === c.id) ? "#3a5a8a" : undefined }}>{c.emoji} {c.name}</button>)}</div>
               {getCache(getCacheKey("news", selectedCategories.map(c => c.id).join("-"), dateRange)) && <p style={{ color: "#4a9a4a", fontSize: 11 }}>✓ キャッシュ済み（3時間有効）</p>}
               <button onClick={fetchNews} disabled={fetchLoading || !apiKey} style={{ ...commonButton, width: "100%", background: "#0f1825", color: "#7eb8f7", border: "1px solid #1a3a5a", opacity: fetchLoading || !apiKey ? 0.4 : 1 }}>{fetchLoading ? "検索中…" : `🔍 ${selectedCategories.length}カテゴリの最新ニュースを検索`}</button>
               {fetchError && <p style={{ color: "#f87171", background: "#1a0a0a", padding: 12, borderRadius: 8 }}>{fetchError}</p>}
@@ -553,7 +616,7 @@ export default function App() {
               <p className="label">期間</p>
               <div style={{ display: "flex", gap: 7, marginBottom: 14 }}>{[{ label: "1週間", value: "7" }, { label: "2週間", value: "14" }, { label: "1ヶ月", value: "30" }].map(d => <button key={d.value} className={`tag ${snsDays === d.value ? "active" : ""}`} onClick={() => { setSnsDays(d.value); setSnsPosts([]); }}>{d.label}</button>)}</div>
               <p className="label">カテゴリを選択（複数可）</p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginBottom: 14 }}>{SNS_CATEGORIES.map(c => <button key={c.id} className="card" onClick={() => toggleSnsCategory(c)} style={{ textAlign: "left", borderColor: selectedSnsCategories.find(s => s.id === c.id) ? "#3a5a8a" : undefined }}>{c.emoji} {c.name}</button>)}</div>
+              <div className="category-grid">{SNS_CATEGORIES.map(c => <button key={c.id} className="card" onClick={() => toggleSnsCategory(c)} style={{ textAlign: "left", borderColor: selectedSnsCategories.find(s => s.id === c.id) ? "#3a5a8a" : undefined }}>{c.emoji} {c.name}</button>)}</div>
               <p className="label">ハッシュタグで絞り込み</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>{[...new Set(selectedSnsCategories.flatMap(c => c.hashtags))].map(tag => <button key={tag} className={`tag ${selectedHashtags.includes(tag) ? "active" : ""}`} onClick={() => { setSelectedHashtags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]); setSnsPosts([]); }}>{tag}</button>)}</div>
               <button onClick={fetchSnsPosts} disabled={snsLoading || !apiKey} style={{ ...commonButton, width: "100%", background: "#0f1825", color: "#7eb8f7", border: "1px solid #1a3a5a", opacity: snsLoading || !apiKey ? 0.4 : 1 }}>{snsLoading ? "検索中…" : "𝕏 SNSトレンドを検索"}</button>
@@ -564,16 +627,44 @@ export default function App() {
 
           {activeTab === "custom" && <div><p className="label">ニュース・トピックを入力</p><textarea rows={4} placeholder="例：OpenAIが新しいモデルを発表。コーディング能力が大幅向上。" value={customNews} onChange={e => setCustomNews(e.target.value)} /></div>}
 
+          <div className="option-grid">
+            <div>
+              <p className="label">投稿先</p>
+              <div className="segmented">
+                {PLATFORM_PRESETS.map(platform => (
+                  <button key={platform.id} className={`tag ${platformId === platform.id ? "active" : ""}`} onClick={() => { setPlatformId(platform.id); setGenerated(null); }}>
+                    {platform.name} / {platform.limit}字
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="label">投稿の狙い</p>
+              <div className="segmented">
+                {POST_GOALS.map(goal => (
+                  <button key={goal.id} className={`tag ${postGoalId === goal.id ? "active" : ""}`} onClick={() => { setPostGoalId(goal.id); setGenerated(null); }}>
+                    {goal.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#777", fontSize: 12, marginBottom: 18 }}>
+            <input type="checkbox" checked={includeSourceUrl} onChange={e => setIncludeSourceUrl(e.target.checked)} style={{ width: 16, height: 16 }} />
+            コピー時に元記事URLを付ける
+          </label>
+
           <hr style={{ border: "none", borderTop: "1px solid #141420", margin: "22px 0" }} />
           <button disabled={!canGenerate} onClick={generateComment} style={{ ...commonButton, width: "100%", color: "white", background: canGenerate ? `linear-gradient(135deg, ${currentPersona.color}, #4c1d95)` : "#111120", opacity: canGenerate ? 1 : 0.4 }}>{loading ? `${currentPersona.emoji} 生成中…` : `${currentPersona.emoji} ${currentPersona.name}として投稿を生成`}</button>
 
-          {(loading || generated) && <div style={{ marginTop: 18 }}><div style={{ display: "flex", justifyContent: "space-between" }}><p className="label">生成された投稿</p>{generated && !loading && <span style={{ color: charOver ? "#f87171" : "#3a5a8a", fontSize: 12 }}>{charCount} / 140</span>}</div>{loading ? <div className="card" style={{ cursor: "default", color: "#2a3a6a" }}>考えています…</div> : editMode ? <textarea rows={5} value={editedText} onChange={e => setEditedText(e.target.value)} /> : <div className="card" style={{ cursor: "default", borderColor: `${currentPersona.color}55`, lineHeight: 1.8 }}><TypewriterText text={generated} /></div>} {generated && !loading && <div style={{ display: "flex", gap: 8, marginTop: 12 }}>{approved ? <span style={{ color: "#34d399", background: "#064e3b", borderRadius: 20, padding: "7px 14px", fontSize: 12 }}>✓ キューに追加済み</span> : <><button onClick={approvePost} style={{ ...commonButton, background: "#064e3b", color: "#6ee7b7" }}>✓ 承認してキューへ</button><button className="ghost" onClick={() => setEditMode(!editMode)}>{editMode ? "プレビュー" : "✏️ 編集"}</button><button className="ghost" onClick={generateComment}>↺ 再生成</button></>}</div>}</div>}
+          {(loading || generated) && <div style={{ marginTop: 18 }}><div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}><p className="label">生成された投稿</p>{generated && !loading && <span style={{ color: charOver ? "#f87171" : "#3a5a8a", fontSize: 12, whiteSpace: "nowrap" }}>{charCount} / {currentPlatform.limit}</span>}</div>{loading ? <div className="card" style={{ cursor: "default", color: "#2a3a6a" }}>考えています…</div> : editMode ? <textarea rows={5} value={editedText} onChange={e => setEditedText(e.target.value)} /> : <div className="card" style={{ cursor: "default", borderColor: `${currentPersona.color}55`, lineHeight: 1.8 }}><TypewriterText text={generated} /></div>}{charOver && <p style={{ color: "#f87171", fontSize: 12 }}>選択中の投稿先の推奨文字数を超えています。編集するか再生成してください。</p>} {generated && !loading && <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>{approved ? <span style={{ color: "#34d399", background: "#064e3b", borderRadius: 20, padding: "7px 14px", fontSize: 12 }}>✓ キューに追加済み</span> : <><button onClick={approvePost} style={{ ...commonButton, background: "#064e3b", color: "#6ee7b7" }}>✓ 承認してキューへ</button><button className="ghost" onClick={() => setEditMode(!editMode)}>{editMode ? "プレビュー" : "✏️ 編集"}</button><button className="ghost" onClick={generateComment}>↺ 再生成</button></>}</div>}</div>}
         </section>
 
-        {queue.length > 0 && <aside><p className="label">投稿キュー</p><div style={{ display: "grid", gap: 10 }}>{queue.map((item, i) => <div key={item.id} className="card" style={{ cursor: "default" }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ color: "#666", fontSize: 11 }}>{item.personaEmoji} {item.persona}</span><button onClick={() => setQueue(q => q.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", color: "#555", cursor: "pointer" }}>×</button></div><p style={{ fontSize: 13, lineHeight: 1.7 }}>{item.text}</p>{isValidUrl(item.url) && <a href={item.url} target="_blank" rel="noreferrer" style={{ color: "#3a5a8a", fontSize: 11, wordBreak: "break-all" }}>🔗 {item.source || "元記事"}</a>}<button className="ghost" onClick={() => copyWithFeedback(item.id, item.text + (item.url ? `\n${item.url}` : ""))} style={{ marginTop: 10, width: "100%" }}>{copiedId === item.id ? "✓ コピーしました" : "📋 コピー"}</button></div>)}<button className="ghost" onClick={() => copyWithFeedback("all", queue.map((q, i) => `【${i + 1}】${q.text}${q.url ? `\n${q.url}` : ""}`).join("\n\n"))}>{copiedId === "all" ? "✓ コピーしました" : "📋 全コメントをまとめてコピー"}</button></div></aside>}
+        {queue.length > 0 && <aside><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}><p className="label">投稿キュー</p><button className="ghost" onClick={() => setQueue([])}>全削除</button></div><div className="queue-actions">{queue.map((item, i) => { const copyText = item.text + (item.includeSourceUrl && item.url ? `\n${item.url}` : ""); return <div key={item.id} className="card" style={{ cursor: "default" }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, gap: 10 }}><span style={{ color: "#666", fontSize: 11 }}>{item.personaEmoji} {item.persona}</span><button onClick={() => setQueue(q => q.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 16 }}>×</button></div><p style={{ fontSize: 13, lineHeight: 1.7 }}>{item.text}</p><div className="queue-meta"><span>{item.platform || "X"}</span><span>{item.goal || "反応を増やす"}</span><span>{item.text.length}/{item.platformLimit || 140}字</span></div>{isValidUrl(item.url) && <a href={item.url} target="_blank" rel="noreferrer" style={{ color: "#3a5a8a", fontSize: 11, wordBreak: "break-all", display: "block", marginTop: 8 }}>🔗 {item.source || "元記事"}</a>}<button className="ghost" onClick={() => copyWithFeedback(item.id, copyText)} style={{ marginTop: 10, width: "100%" }}>{copiedId === item.id ? "✓ コピーしました" : "📋 コピー"}</button></div>; })}<button className="ghost" onClick={() => copyWithFeedback("all", queue.map((q, i) => `【${i + 1}】${q.text}${q.includeSourceUrl && q.url ? `\n${q.url}` : ""}`).join("\n\n"))}>{copiedId === "all" ? "✓ コピーしました" : "📋 全コメントをまとめてコピー"}</button></div></aside>}
       </main>
 
-      <footer style={{ borderTop: "1px solid #141420", padding: "14px 20px", maxWidth: 960, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <footer className="footer-inner" style={{ borderTop: "1px solid #141420", padding: "14px 20px", maxWidth: 960, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <p style={{ fontSize: 11, color: "#2a2a4a" }}>AI Post Studio v1.1 / OpenAI API</p>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 11, color: "#3a3a5a" }}>自動承認モード</span><button className="ghost" onClick={toggleAutoApprove}>{autoApprove ? "自動承認 ON" : "承認モード ON"}</button></div>
       </footer>
