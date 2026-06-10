@@ -177,6 +177,36 @@ function normalizeNews(items) {
   })).filter(item => item.title);
 }
 
+function normalizeSourceItem(item, fallbackUrl = "") {
+  if (!item || typeof item !== "object") return null;
+  const normalized = {
+    title: item.title || item.t || "",
+    summary: item.summary || item.s || "",
+    source: item.source || item.src || "",
+    url: item.url || item.u || fallbackUrl,
+    tags: item.tags || [],
+    date: item.date || item.d || "",
+    reaction: item.reaction || item.r || "",
+  };
+  return normalized.title || normalized.summary ? normalized : null;
+}
+
+function extractJsonObject(text) {
+  if (!text) return null;
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) {
+    try { return JSON.parse(fenced[1].trim()); } catch {}
+  }
+  const array = extractJsonArray(text);
+  if (Array.isArray(array)) return array[0] || null;
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    try { return JSON.parse(text.slice(start, end + 1)); } catch {}
+  }
+  return null;
+}
+
 function filterByDate(items, days) {
   if (!days || !items?.length) return items;
   const cutoff = new Date();
@@ -296,6 +326,11 @@ export default function App() {
   const [snsLoading, setSnsLoading] = useState(false);
   const [snsError, setSnsError] = useState("");
 
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceItem, setSourceItem] = useState(null);
+  const [sourceLoading, setSourceLoading] = useState(false);
+  const [sourceError, setSourceError] = useState("");
+
   const [customNews, setCustomNews] = useState("");
   const [generated, setGenerated] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -315,7 +350,15 @@ export default function App() {
   const currentGoal = POST_GOALS.find(g => g.id === postGoalId) || POST_GOALS[0];
   const charCount = (editMode ? editedText : generated)?.length || 0;
   const charOver = charCount > currentPlatform.limit;
-  const canGenerate = !loading && !!apiKey && (activeTab === "search" ? !!selectedNews : activeTab === "sns" ? !!selectedPost : customNews.trim().length > 0);
+  const canGenerate = !loading && !!apiKey && (
+    activeTab === "search"
+      ? !!selectedNews
+      : activeTab === "sns"
+        ? !!selectedPost
+        : activeTab === "url"
+          ? !!sourceItem
+          : customNews.trim().length > 0
+  );
 
   useEffect(() => {
     try { localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue)); } catch {}
@@ -449,6 +492,34 @@ export default function App() {
     }
   }
 
+  async function analyzeSourceUrl() {
+    const url = sourceUrl.trim();
+    if (!apiKey) { setSourceError("OpenAI APIキーを設定してください"); return; }
+    if (!isValidUrl(url)) { setSourceError("有効なURLを入力してください"); return; }
+
+    setSourceLoading(true);
+    setSourceError("");
+    setSourceItem(null);
+    setGenerated(null);
+    setApproved(false);
+    try {
+      const text = await callOpenAI(apiKey, {
+        model: MODEL_SEARCH,
+        useSearch: true,
+        max_output_tokens: 1400,
+        instructions: "あなたはURL先の投稿・ニュースをSNS投稿素材として整理するアシスタントです。回答はJSONオブジェクトのみ。説明文やMarkdownは禁止。",
+        input: `次のURLの内容を確認し、AI Post Studioでコメント生成に使える素材として要約してください。ニュース記事、ブログ、SNS投稿のいずれでも対応してください。\n\nURL: ${url}\n\n返答形式:\n{"t":"30字以内のタイトル","s":"60字以内の要約","src":"媒体名または投稿者名","u":"元URL","d":"公開日が分かればYYYY-MM-DD、不明なら空文字","tags":["タグ"],"r":"投稿や記事の論調をポジティブ/ネガティブ/中立で一語"}`,
+      });
+      const item = normalizeSourceItem(extractJsonObject(text), url);
+      if (!item) throw new Error("URL内容が取得できませんでした");
+      setSourceItem(item);
+    } catch (error) {
+      setSourceError(analyzeError(error, "single"));
+    } finally {
+      setSourceLoading(false);
+    }
+  }
+
   async function generateComment() {
     setLoading(true);
     setGenerated(null);
@@ -458,7 +529,9 @@ export default function App() {
       ? customNews
       : activeTab === "sns"
         ? `話題のポスト: ${selectedPost.title}\n内容: ${selectedPost.summary}\n反応: ${selectedPost.reaction || ""}`
-        : `タイトル: ${selectedNews.title}\n概要: ${selectedNews.summary}`;
+        : activeTab === "url"
+          ? `URL素材: ${sourceItem.title}\n概要: ${sourceItem.summary}\n媒体/投稿者: ${sourceItem.source || ""}\n反応/論調: ${sourceItem.reaction || ""}\nURL: ${sourceItem.url}`
+          : `タイトル: ${selectedNews.title}\n概要: ${selectedNews.summary}`;
 
     try {
       const text = await callOpenAI(apiKey, {
@@ -487,9 +560,9 @@ ${newsText}`,
   }
 
   function addToQueue(text) {
-    const title = activeTab === "search" ? selectedNews?.title : activeTab === "sns" ? selectedPost?.title : customNews.slice(0, 30) + "…";
-    const url = activeTab === "search" ? selectedNews?.url : activeTab === "sns" ? selectedPost?.url : null;
-    const source = activeTab === "search" ? selectedNews?.source : activeTab === "sns" ? selectedPost?.source : null;
+    const title = activeTab === "search" ? selectedNews?.title : activeTab === "sns" ? selectedPost?.title : activeTab === "url" ? sourceItem?.title : customNews.slice(0, 30) + "…";
+    const url = activeTab === "search" ? selectedNews?.url : activeTab === "sns" ? selectedPost?.url : activeTab === "url" ? sourceItem?.url : null;
+    const source = activeTab === "search" ? selectedNews?.source : activeTab === "sns" ? selectedPost?.source : activeTab === "url" ? sourceItem?.source : null;
     setQueue(q => [...q, {
       id: Date.now(),
       text,
@@ -537,8 +610,8 @@ ${newsText}`,
         .app-header-inner{max-width:960px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:16px}.header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
         .app-main{max-width:960px;margin:0 auto;padding:24px;display:grid;gap:24px}.persona-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px}
         .category-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}.option-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
-        .segmented{display:flex;gap:7px;flex-wrap:wrap}.queue-meta{display:flex;gap:6px;flex-wrap:wrap;color:#555;font-size:10px;margin-top:8px}.queue-actions{display:grid;gap:8px}
-        @media (max-width:760px){.app-header-inner{align-items:flex-start;flex-direction:column}.app-main{grid-template-columns:1fr!important;padding:18px}.persona-grid{grid-template-columns:repeat(2,1fr)}.category-grid,.option-grid{grid-template-columns:1fr}.header-actions{width:100%}.tabbar{display:flex;overflow-x:auto}.tabbar button{white-space:nowrap}.footer-inner{align-items:flex-start!important;flex-direction:column;gap:10px}}
+        .segmented{display:flex;gap:7px;flex-wrap:wrap}.queue-meta{display:flex;gap:6px;flex-wrap:wrap;color:#555;font-size:10px;margin-top:8px}.queue-actions{display:grid;gap:8px}.url-import-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px}
+        @media (max-width:760px){.app-header-inner{align-items:flex-start;flex-direction:column}.app-main{grid-template-columns:1fr!important;padding:18px}.persona-grid{grid-template-columns:repeat(2,1fr)}.category-grid,.option-grid,.url-import-row{grid-template-columns:1fr}.header-actions{width:100%}.tabbar{display:flex;overflow-x:auto}.tabbar button{white-space:nowrap}.footer-inner{align-items:flex-start!important;flex-direction:column;gap:10px}}
       `}</style>
 
       {showApiSetup && (
@@ -593,7 +666,7 @@ ${newsText}`,
           {showPersona && <div style={{ marginBottom: 20 }}><p className="label">人格プロンプト（編集可能）</p><textarea rows={8} value={activePrompt} onChange={e => setCustomPersona(e.target.value)} /></div>}
 
           <div className="tabbar" style={{ borderBottom: "1px solid #141420", marginBottom: 18 }}>
-            {[{ id: "search", label: "🔍 ニュース検索" }, { id: "sns", label: "𝕏 SNSトレンド" }, { id: "custom", label: "✏️ 自由入力" }].map(tab => (
+            {[{ id: "search", label: "🔍 ニュース検索" }, { id: "sns", label: "𝕏 SNSトレンド" }, { id: "url", label: "🔗 URL入力" }, { id: "custom", label: "✏️ 自由入力" }].map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ background: "none", border: "none", borderBottom: activeTab === tab.id ? "2px solid #7eb8f7" : "2px solid transparent", color: activeTab === tab.id ? "#7eb8f7" : "#555", padding: "10px 16px", cursor: "pointer" }}>{tab.label}</button>
             ))}
           </div>
@@ -622,6 +695,52 @@ ${newsText}`,
               <button onClick={fetchSnsPosts} disabled={snsLoading || !apiKey} style={{ ...commonButton, width: "100%", background: "#0f1825", color: "#7eb8f7", border: "1px solid #1a3a5a", opacity: snsLoading || !apiKey ? 0.4 : 1 }}>{snsLoading ? "検索中…" : "𝕏 SNSトレンドを検索"}</button>
               {snsError && <p style={{ color: "#f87171", background: "#1a0a0a", padding: 12, borderRadius: 8 }}>{snsError}</p>}
               {snsPosts.length > 0 && <div style={{ marginTop: 16, display: "grid", gap: 8 }}>{snsPosts.map((post, i) => <article key={i} className={`card ${selectedPost === post ? "selected" : ""}`} onClick={() => { setSelectedPost(post); setGenerated(null); setApproved(false); }}><strong style={{ fontSize: 13 }}>{post.title}</strong><p style={{ color: "#666", fontSize: 12 }}>{post.summary}</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 10, color: "#3a5a8a" }}>{post.source && <span>📰 {post.source}</span>}{post.reaction && <span>{post.reaction}</span>}{isValidUrl(post.url) && <a href={post.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color: "#7eb8f7" }}>元記事</a>}</div></article>)}</div>}
+            </div>
+          )}
+
+          {activeTab === "url" && (
+            <div>
+              <p className="label">見つけた投稿・ニュースのURL</p>
+              <div className="url-import-row">
+                <input
+                  type="url"
+                  placeholder="https://example.com/news-or-post"
+                  value={sourceUrl}
+                  onChange={e => {
+                    setSourceUrl(e.target.value);
+                    setSourceItem(null);
+                    setSourceError("");
+                    setGenerated(null);
+                    setApproved(false);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && sourceUrl.trim()) analyzeSourceUrl();
+                  }}
+                />
+                <button
+                  onClick={analyzeSourceUrl}
+                  disabled={sourceLoading || !apiKey || !sourceUrl.trim()}
+                  style={{ ...commonButton, background: "#0f1825", color: "#7eb8f7", border: "1px solid #1a3a5a", opacity: sourceLoading || !apiKey || !sourceUrl.trim() ? 0.4 : 1, whiteSpace: "nowrap" }}
+                >
+                  {sourceLoading ? "解析中…" : "URLを解析"}
+                </button>
+              </div>
+              <p style={{ color: "#4a4a6a", fontSize: 12, lineHeight: 1.7, marginTop: 0 }}>
+                ニュース記事、ブログ、SNS投稿のURLを貼ると、AIが内容を短く整理して投稿生成の素材にします。
+              </p>
+              {sourceError && <p style={{ color: "#f87171", background: "#1a0a0a", padding: 12, borderRadius: 8 }}>{sourceError}</p>}
+              {sourceItem && (
+                <article className="card selected" style={{ cursor: "default", marginTop: 14 }}>
+                  <strong style={{ fontSize: 13 }}>{sourceItem.title}</strong>
+                  <p style={{ color: "#666", fontSize: 12 }}>{sourceItem.summary}</p>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 10, color: "#3a5a8a" }}>
+                    {sourceItem.source && <span>📰 {sourceItem.source}</span>}
+                    {sourceItem.date && <span>📅 {sourceItem.date}</span>}
+                    {sourceItem.reaction && <span>{sourceItem.reaction}</span>}
+                    {isValidUrl(sourceItem.url) && <a href={sourceItem.url} target="_blank" rel="noreferrer" style={{ color: "#7eb8f7" }}>元URL</a>}
+                  </div>
+                </article>
+              )}
             </div>
           )}
 
